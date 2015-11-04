@@ -34,29 +34,7 @@
 #include <trun/detail/common.hpp>
 #include <trun/detail/core-impl.hpp>
 #include <trun/detail/parameters.hpp>
-
-
-//////////////////////////////////////////////////////////////////////
-// * Steady clock
-
-namespace trun {
-    namespace time {
-        namespace detail {
-
-            template<class C>
-            void check()
-            {
-            }
-
-            template<class C>
-            typename result<C>::duration clock_units(const typename result<C>::duration & time)
-            {
-                return time;
-            }
-
-        }
-    }
-}
+#include <trun/detail/time.hpp>
 
 
 //////////////////////////////////////////////////////////////////////
@@ -84,60 +62,6 @@ namespace trun {
         return std::move(res);
     }
 
-}
-
-
-//////////////////////////////////////////////////////////////////////
-// * Generic clock
-
-namespace trun {
-    namespace time {
-
-        template<class C>
-        parameters<C>
-        calibrate(const parameters<C> & params)
-        {
-            detail::check<C>();
-
-            // initialize parameters
-            parameters<C> res_params = params;
-            res_params.clock_time = typename C::duration(typename C::rep(0));
-            if (res_params.mean_err_perc == 0) {
-                res_params.mean_err_perc = 0.01;
-            }
-            if (res_params.sigma_outlier_perc == 0.0) {
-                res_params.sigma_outlier_perc = 3.0;
-            }
-            if (res_params.init_runs == 0) {
-                res_params.init_runs = 30;
-            }
-            if (res_params.init_batch == 0) {
-                // user benchmarks will probably be longer than timing costs
-                res_params.init_batch = 10;
-            }
-            if (res_params.max_experiments == 0) {
-                res_params.max_experiments = 1000000;
-            }
-            trun::detail::parameters::check(res_params);
-
-            parameters<C> clock_params(res_params);
-            clock_params.warmup = 1000;
-            clock_params.init_batch = 10000;
-            clock_params.max_experiments = 1000000000;
-
-            INFO("Calibrating clock overheads...");
-            result<C> res;
-            trun::detail::core::run<true>(res, clock_params, C::now);
-            if (!res.converged) {
-                errx(1, "clock calibration did not converge");
-            }
-
-            res_params.clock_time = detail::clock_units<C>(res.mean);
-
-            return std::move(res_params);
-        }
-
-    }
 }
 
 #endif // TRUN_DETAIL_HPP
