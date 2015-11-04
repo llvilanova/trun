@@ -21,6 +21,8 @@
 #ifndef TRUN__DETAIL__CORE_IMPL_HPP
 #define TRUN__DETAIL__CORE_IMPL_HPP 1
 
+#include <limits>
+
 #include <trun/detail/core.hpp>
 
 

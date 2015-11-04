@@ -33,4 +33,6 @@ namespace trun {
     }
 }
 
+#include <trun/detail/core-impl.hpp>
+
 #endif // TRUN__DETAIL__CORE_HPP

@@ -130,6 +130,6 @@ namespace trun {
 
 }
 
-#include <trun-detail.hpp>
+#include <trun/detail/run.hpp>
 
 #endif // TRUN_HPP

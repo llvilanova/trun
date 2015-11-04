@@ -1,4 +1,4 @@
-/** trun-detail.hpp ---
+/** trun/detail/run.hpp ---
  *
  * Copyright (C) 2015 Lluís Vilanova
  *
@@ -18,27 +18,14 @@
  * along with this program.  If not, see http://www.gnu.org/licenses/.
  */
 
-#ifndef TRUN_DETAIL_HPP
-#define TRUN_DETAIL_HPP 1
-
-#include <chrono>
-#include <cmath>
-#include <cpuid.h>
-#include <cstdio>
-#include <err.h>
-#include <limits>
-#include <sys/time.h>
-#include <unistd.h>
-#include <utility>
+#ifndef TRUN__DETAIL__RUN_HPP
+#define TRUN__DETAIL__RUN_HPP 1
 
 #include <trun/detail/common.hpp>
-#include <trun/detail/core-impl.hpp>
+#include <trun/detail/core.hpp>
 #include <trun/detail/parameters.hpp>
 #include <trun/detail/time.hpp>
 
-
-//////////////////////////////////////////////////////////////////////
-// * Experiment run
 
 namespace trun {
 
@@ -64,4 +51,4 @@ namespace trun {
 
 }
 
-#endif // TRUN_DETAIL_HPP
+#endif // TRUN__DETAIL__RUN_HPP
