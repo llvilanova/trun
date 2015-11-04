@@ -208,6 +208,8 @@ void trun::detail::core::run(::trun::result<typename P::clock_type> & res, P & p
         // run experiment batches
         if (samples.size() < p.run_size) {
             samples.resize(p.run_size);
+        } else if (samples.size() > p.run_size * 2) {
+            samples.resize(p.run_size * 2);
         }
         loops(samples, p.warmup_batch_size, p.run_size, p.batch_size, C(),
               std::forward<F>(func), std::forward<A>(args)...);

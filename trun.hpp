@@ -42,6 +42,8 @@
 namespace trun {
 
     // Experiment run results.
+    //
+    // Timing numbers are for a single experiment.
     template<class Clock>
     class result
     {
