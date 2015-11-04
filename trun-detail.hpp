@@ -280,27 +280,6 @@ namespace trun {
             res.converged = !hit_max;
         }
 
-        template<class P>
-        void check_parameters(const P & params)
-        {
-#define _TRUN_PARAM_CHECK(p, eq)                                \
-            do {                                                \
-                if (params.p < 0) {                             \
-                    errx(1, "cannot have negative '" #p "'");   \
-                }                                               \
-                if (eq && params.p == 0) {                      \
-                    errx(1, "cannot have null '" #p "'");       \
-                }                                               \
-            } while (0)
-
-            _TRUN_PARAM_CHECK(clock_time.count(), false);
-            _TRUN_PARAM_CHECK(clock_overhead_perc, false);
-            _TRUN_PARAM_CHECK(mean_err_perc, false);
-            _TRUN_PARAM_CHECK(init_runs, true);
-            _TRUN_PARAM_CHECK(init_batch, true);
-#undef _TRUN_PARAM_CHECK
-        }
-
     }
 
     template<class C, class F, class... A>
@@ -313,7 +292,7 @@ namespace trun {
             trun::detail::do_run<false>(res, new_params,
                                         std::forward<F>(func), std::forward<A>(args)...);
         } else {
-            detail::check_parameters(params);
+            detail::parameters::check(params);
             INFO("Executing benchmark...");
             trun::detail::do_run<false>(res, params,
                                         std::forward<F>(func), std::forward<A>(args)...);
@@ -357,7 +336,7 @@ namespace trun {
             if (res_params.max_experiments == 0) {
                 res_params.max_experiments = 1000000;
             }
-            trun::detail::check_parameters(res_params);
+            trun::detail::parameters::check(res_params);
 
             parameters<C> clock_params(res_params);
             clock_params.warmup = 1000;
@@ -377,23 +356,6 @@ namespace trun {
         }
 
     }
-}
-
-
-//////////////////////////////////////////////////////////////////////
-// * Parameters
-
-template<class C>
-trun::parameters<C>::parameters()
-    :clock_time(0)
-    ,clock_overhead_perc(TRUN_CLOCK_OVERHEAD_PERC)
-    ,mean_err_perc(0)
-    ,sigma_outlier_perc(0)
-    ,warmup(0)
-    ,init_runs(0)
-    ,init_batch(0)
-    ,max_experiments(0)
-{
 }
 
 #endif // TRUN_DETAIL_HPP
