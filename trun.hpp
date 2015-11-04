@@ -55,12 +55,15 @@ namespace trun {
         bool converged;
     };
 
+#define TRUN_CLOCK_OVERHEAD_PERC 0.001
+
     // Run parameters.
     //
     // @Clock: the clock type (any provided by std::chrono).
     // @clock_time: the time it takes to take a measurement with #Clock.
-    // @clock_ovh_perc: batch runs until
-    //     clock_time <= mean * clock_ovh_perc
+    //     (default: auto-calibrated)
+    // @clock_overhead_perc: target clock overhead percentage
+    //     (default: TRUN_CLOCK_OVERHEAD_PERC)
     // @mean_err_perc: keep running until
     //     standard error <= mean * mean_err_perc
     // @sigma_outlier_perc: consider outliers those where
@@ -70,6 +73,11 @@ namespace trun {
     // @init_batch: initial batch size
     // @max_experiments: maximum number of experiments run until non-convergence
     //     is assumed (runs + batch)
+    //
+    // When the clock is auto-calibrated, the same parameters will be used.
+    //
+    // The batch size will be increased until:
+    //     clock_time <= mean * (clock_overhead_perc / 100)
     template<class Clock>
     class parameters
     {
@@ -78,7 +86,7 @@ namespace trun {
 
         using clock_type = Clock;
         typename result<clock_type>::duration clock_time;
-        double clock_ovh_perc;
+        double clock_overhead_perc;
 
         double mean_err_perc;
         double sigma_outlier_perc;

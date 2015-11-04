@@ -145,7 +145,7 @@ namespace trun {
         // - inner
         //   - Aggregates workload on batches; minimizes clock overheads.
         //   - Dynamically sized until:
-        //       clock_time <= #inner * mean * clock_ovh_perc
+        //       clock_time <= #inner * mean * clock_overhead_perc
         //       Increase capped to 'max_inner_multiplier' (if not 'calibrating')
         //
         // Stops when:
@@ -173,9 +173,9 @@ namespace trun {
             size_t iterations = 0;
             size_t iterations_check = 10;
 
-            DEBUG("clock_ovh_perc=%f mean_err_perc=%f warmup=%lu "
+            DEBUG("clock_overhead_perc=%f mean_err_perc=%f warmup=%lu "
                   "init_runs=%lu init_batch=%lu max_experiments=%lu",
-                  params.clock_ovh_perc, params.mean_err_perc, params.warmup,
+                  params.clock_overhead_perc, params.mean_err_perc, params.warmup,
                   params.init_runs, params.init_batch, params.max_experiments);
 
             do {
@@ -253,10 +253,10 @@ namespace trun {
                 // update 'clock_time' if we're in calibration mode
                 update_clock_time<calibrating>(params, res_current.mean);
 
-                // keep timing overhead under 'clock_ovh_perc'
-                //     clock_time <= new_inner * mean * clock_ovh_perc
+                // keep timing overhead under 'clock_overhead_perc'
+                //     clock_time <= new_inner * mean * clock_overhead_perc
                 auto old_inner = inner;
-                auto new_inner = ((params.clock_time.count() / params.clock_ovh_perc) /
+                auto new_inner = ((params.clock_time.count() / params.clock_overhead_perc) /
                                   res_current.mean.count());
                 if (!calibrating && new_inner > inner * max_inner_multiplier) {
                     inner = std::ceil(inner * max_inner_multiplier);
@@ -310,7 +310,7 @@ namespace trun {
             } while (0)
 
             _TRUN_PARAM_CHECK(clock_time.count(), false);
-            _TRUN_PARAM_CHECK(clock_ovh_perc, false);
+            _TRUN_PARAM_CHECK(clock_overhead_perc, false);
             _TRUN_PARAM_CHECK(mean_err_perc, false);
             _TRUN_PARAM_CHECK(init_runs, true);
             _TRUN_PARAM_CHECK(init_batch, true);
@@ -357,9 +357,6 @@ namespace trun {
             // initialize parameters
             parameters<C> res_params = params;
             res_params.clock_time = typename C::duration(typename C::rep(0));
-            if (res_params.clock_ovh_perc == 0) {
-                res_params.clock_ovh_perc = 0.001;
-            }
             if (res_params.mean_err_perc == 0) {
                 res_params.mean_err_perc = 0.01;
             }
@@ -379,10 +376,6 @@ namespace trun {
             trun::detail::check_parameters(res_params);
 
             parameters<C> clock_params(res_params);
-            if (params.clock_ovh_perc == 0) {
-                // try to converge faster
-                clock_params.clock_ovh_perc = 0.01;
-            }
             clock_params.warmup = 1000;
             clock_params.init_batch = 10000;
             clock_params.max_experiments = 1000000000;
@@ -409,7 +402,7 @@ namespace trun {
 template<class C>
 trun::parameters<C>::parameters()
     :clock_time(0)
-    ,clock_ovh_perc(0)
+    ,clock_overhead_perc(TRUN_CLOCK_OVERHEAD_PERC)
     ,mean_err_perc(0)
     ,sigma_outlier_perc(0)
     ,warmup(0)
