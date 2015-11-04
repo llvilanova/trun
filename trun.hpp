@@ -75,7 +75,7 @@ namespace trun {
     //     standard error <= mean * mean_err_perc
     // @sigma_outlier_perc: consider outliers those where
     //     |elem - mean| >= sigma_outlier_perc * sigma
-    // @warmup_batch_size: batch size before all runs
+    // @warmup_batch_size: number of experiments before every round
     //     (default: TRUN_WARMUP_BATCH_SIZE)
     // @run_size: initial number of runs
     //     (default: TRUN_RUN_SIZE)
@@ -129,10 +129,8 @@ namespace trun {
     //
     // If results do not converge (#max_experiments), return the mean with lowest
     // standard error found so far.
-    //
-    // Runs are batched to keep the clock overheads under control.
     template<class Clock, class Func, class... Args>
-    result<Clock> && run(const parameters<Clock> && parameters,
+    result<Clock> && run(const parameters<Clock> & parameters,
                          Func&& func, Args&&... args);
 
 }
