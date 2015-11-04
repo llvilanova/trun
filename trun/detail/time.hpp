@@ -57,9 +57,6 @@ namespace trun {
             if (res_params.sigma_outlier_perc == 0.0) {
                 res_params.sigma_outlier_perc = 3.0;
             }
-            if (res_params.init_runs == 0) {
-                res_params.init_runs = 30;
-            }
             if (res_params.init_batch == 0) {
                 // user benchmarks will probably be longer than timing costs
                 res_params.init_batch = 10;

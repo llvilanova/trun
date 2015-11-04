@@ -59,6 +59,7 @@ namespace trun {
 
 #define TRUN_CLOCK_OVERHEAD_PERC 0.001
 #define TRUN_WARMUP_BATCH_SIZE 0
+#define TRUN_RUN_SIZE 30                // minimal statistical significance
 
     // Run parameters.
     //
@@ -73,7 +74,9 @@ namespace trun {
     //     |elem - mean| >= sigma_outlier_perc * sigma
     // @warmup_batch_size: batch size before all runs
     //     (default: TRUN_WARMUP_BATCH_SIZE)
-    // @init_runs: initial number of runs
+    // @run_size: initial number of runs
+    //     (default: TRUN_RUN_SIZE)
+    //     Statistics are calculated across runs.
     // @init_batch: initial batch size
     // @max_experiments: maximum number of experiments run until non-convergence
     //     is assumed (runs + batch)
@@ -96,7 +99,7 @@ namespace trun {
         double sigma_outlier_perc;
 
         size_t warmup_batch_size;
-        size_t init_runs;
+        size_t run_size;
         size_t init_batch;
         size_t max_experiments;
     };
