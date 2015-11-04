@@ -65,7 +65,7 @@ namespace trun {
             template<class R, class C, class F, class... Args>
             static inline
             void do_loops(std::vector<R> & samples,
-                          const size_t warmup, const size_t run_size, const size_t inner,
+                          const size_t warmup, const size_t run_size, const size_t batch_size,
                           C clock, F&& func, Args&&... args)
             {
                 for (size_t i = 0; i < warmup; i++) {
@@ -74,7 +74,7 @@ namespace trun {
 
                 for (size_t i = 0; i < run_size; i++) {
                     auto start = clock.now();
-                    for (size_t j = 0; j < inner; j++) {
+                    for (size_t j = 0; j < batch_size; j++) {
                         func(std::forward<Args>(args)...);
                     }
                     auto end = clock.now();
@@ -102,11 +102,11 @@ namespace trun {
 //         width = mean * mean_err_perc
 //         sima^2 = variance
 //       Increase capped to 'max_run_size_multiplier'.
-// - inner
+// - batch_size
 //   - Aggregates workload on batches; minimizes clock overheads.
 //   - Dynamically sized until:
-//       clock_time <= #inner * mean * clock_overhead_perc
-//       Increase capped to 'max_inner_multiplier' (if not 'calibrating')
+//       clock_time <= #batch_size * mean * clock_overhead_perc
+//       Increase capped to 'max_batch_size_multiplier' (if not 'calibrating')
 //
 // Stops when:
 //   sigma <= mean_err_perc * mean  => mean
@@ -120,8 +120,8 @@ void trun::detail::core::run(result<typename P::clock_type> & res, P & params, F
 
     size_t max_run_size_multiplier = 2;
     size_t run_size = params.run_size;
-    size_t max_inner_multiplier = 2;
-    size_t inner = params.init_batch;
+    size_t max_batch_size_multiplier = 2;
+    size_t batch_size = params.batch_size;
 
     result<C> res_current;
     result<C> res_best;
@@ -130,21 +130,21 @@ void trun::detail::core::run(result<typename P::clock_type> & res, P & params, F
     bool match = false;
     bool hit_max = false;
     size_t experiments = 0;
-    // increase inner every iterations_check iterations
+    // increase batch_size every iterations_check iterations
     size_t iterations = 0;
     size_t iterations_check = 10;
 
     DEBUG("clock_overhead_perc=%f mean_err_perc=%f warmup=%lu "
-          "runs_size=%lu init_batch=%lu max_experiments=%lu",
+          "runs_size=%lu batch_size=%lu max_experiments=%lu",
           params.clock_overhead_perc, params.mean_err_perc, params.warmup_batch_size,
-          params.run_size, params.init_batch, params.max_experiments);
+          params.run_size, params.batch_size, params.max_experiments);
 
     do {
         // run experiment
         if (samples.size() < run_size) {
             samples.resize(run_size);
         }
-        do_loops(samples, params.warmup_batch_size, run_size, inner, C(),
+        do_loops(samples, params.warmup_batch_size, run_size, batch_size, C(),
                  std::forward<F>(func), std::forward<A>(args)...);
 
         // calculate statistics
@@ -158,7 +158,7 @@ void trun::detail::core::run(result<typename P::clock_type> & res, P & params, F
             rep_type sum = 0;
             rep_type sq_sum = 0;
             for (size_t i = 0; i < run_size; i++) {
-                auto elem = samples[i] / inner;
+                auto elem = samples[i] / batch_size;
                 samples[i] = elem;
                 if (duration_raw<C>(elem) < res_current.min) {
                     res_current.min = duration_raw<C>(elem);
@@ -197,36 +197,36 @@ void trun::detail::core::run(result<typename P::clock_type> & res, P & params, F
         }
         auto width = res_current.mean.count() * params.mean_err_perc;
         res_current.run_size = run_size;
-        res_current.batch_size = inner;
+        res_current.batch_size = batch_size;
 
         iterations++;
-        experiments += (run_size * inner);
+        experiments += (run_size * batch_size);
 
         // keep track of best result in case we hit the run limit
         if (res_current.sigma < res_best.sigma) {
             res_best = res_current;
         }
 
-        DEBUG("mean=%f sigma=%f width=%f run_size=%lu real_run_size=%lu inner=%lu experiments=%lu",
+        DEBUG("mean=%f sigma=%f width=%f run_size=%lu real_run_size=%lu batch_size=%lu experiments=%lu",
               res_current.mean.count(), res_current.sigma.count(), width,
-              run_size, real_run_size, inner, experiments);
+              run_size, real_run_size, batch_size, experiments);
 
         // update 'clock_time' if we're in calibration mode
         update_clock_time<calibrating>(params, res_current.mean);
 
         // keep timing overhead under 'clock_overhead_perc'
-        //     clock_time <= new_inner * mean * clock_overhead_perc
-        auto old_inner = inner;
-        auto new_inner = ((params.clock_time.count() / params.clock_overhead_perc) /
+        //     clock_time <= new_batch_size * mean * clock_overhead_perc
+        auto old_batch_size = batch_size;
+        auto new_batch_size = ((params.clock_time.count() / params.clock_overhead_perc) /
                           res_current.mean.count());
-        if (!calibrating && new_inner > inner * max_inner_multiplier) {
-            inner = std::ceil(inner * max_inner_multiplier);
-        } else if (new_inner > inner) {
-            inner = std::ceil(new_inner);
+        if (!calibrating && new_batch_size > batch_size * max_batch_size_multiplier) {
+            batch_size = std::ceil(batch_size * max_batch_size_multiplier);
+        } else if (new_batch_size > batch_size) {
+            batch_size = std::ceil(new_batch_size);
         }
-        // increase inner if we're not converging
+        // increase batch_size if we're not converging
         if (!match && iterations % iterations_check == 0) {
-            inner *= max_inner_multiplier;
+            batch_size *= max_batch_size_multiplier;
         }
 
         // keep standard error in 95% under 'mean_err_perc'
@@ -235,8 +235,8 @@ void trun::detail::core::run(result<typename P::clock_type> & res, P & params, F
             run_size = std::ceil(run_size * max_run_size_multiplier);
         } else if (new_run_size < params.run_size) {
             run_size = params.run_size;
-        } else if (inner <= old_inner && new_run_size < run_size) {
-            // do not decrease run_size if we did not increase inner
+        } else if (batch_size <= old_batch_size && new_run_size < run_size) {
+            // do not decrease run_size if we did not increase batch_size
         } else {
             run_size = std::ceil(new_run_size);
         }

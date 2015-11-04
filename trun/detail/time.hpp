@@ -57,18 +57,15 @@ namespace trun {
             if (res_params.sigma_outlier_perc == 0.0) {
                 res_params.sigma_outlier_perc = 3.0;
             }
-            if (res_params.init_batch == 0) {
-                // user benchmarks will probably be longer than timing costs
-                res_params.init_batch = 10;
-            }
             if (res_params.max_experiments == 0) {
                 res_params.max_experiments = 1000000;
             }
             trun::detail::parameters::check(res_params);
 
+            // clock measurements are going to be fast
             parameters<C> clock_params(res_params);
             clock_params.warmup_batch_size = 1000;
-            clock_params.init_batch = 10000;
+            clock_params.batch_size = 10000;
             clock_params.max_experiments = 1000000000;
 
             INFO("Calibrating clock overheads...");

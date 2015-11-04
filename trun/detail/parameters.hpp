@@ -44,7 +44,7 @@ namespace trun {
                 _TRUN_PARAM_CHECK(clock_overhead_perc, false);
                 _TRUN_PARAM_CHECK(mean_err_perc, false);
                 _TRUN_PARAM_CHECK(run_size, true);
-                _TRUN_PARAM_CHECK(init_batch, true);
+                _TRUN_PARAM_CHECK(batch_size, true);
 #undef _TRUN_PARAM_CHECK
             }
 
@@ -60,7 +60,7 @@ trun::parameters<C>::parameters()
     ,sigma_outlier_perc(0)
     ,warmup_batch_size(TRUN_WARMUP_BATCH_SIZE)
     ,run_size(TRUN_RUN_SIZE)
-    ,init_batch(0)
+    ,batch_size(TRUN_BATCH_SIZE)
     ,max_experiments(0)
 {
 }
