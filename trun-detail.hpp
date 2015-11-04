@@ -31,24 +31,8 @@
 #include <unistd.h>
 #include <utility>
 
-
-#define __unused(arg) _unused_ ## arg __attribute__((unused))
-
-#ifndef TRUN_DEBUG_TIME
-#define TRUN_DEBUG_TIME std::pico
-#endif
-
-#if defined(NDEBUG) && !TRUN_DEBUG
-#define DEBUG(args...)
-#else
-#define DEBUG(args...) warnx(args)
-#endif
-
-#if defined(NDEBUG) && !TRUN_INFO
-#define INFO(args...)
-#else
-#define INFO(args...) warnx(args)
-#endif
+#include <trun/detail/common.hpp>
+#include <trun/detail/parameters.hpp>
 
 
 //////////////////////////////////////////////////////////////////////

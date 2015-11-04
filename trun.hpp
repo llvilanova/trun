@@ -28,10 +28,12 @@
 #include <vector>
 
 
+// Show debug messages
 #ifndef TRUN_DEBUG
 #define TRUN_DEBUG 0
 #endif
 
+// Show info messages
 #ifndef TRUN_INFO
 #define TRUN_INFO 0
 #endif
