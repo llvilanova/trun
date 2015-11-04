@@ -136,7 +136,7 @@ void trun::detail::core::run(result<typename P::clock_type> & res, P & params, F
 
     DEBUG("clock_overhead_perc=%f mean_err_perc=%f warmup=%lu "
           "init_runs=%lu init_batch=%lu max_experiments=%lu",
-          params.clock_overhead_perc, params.mean_err_perc, params.warmup,
+          params.clock_overhead_perc, params.mean_err_perc, params.warmup_batch_size,
           params.init_runs, params.init_batch, params.max_experiments);
 
     do {
@@ -144,7 +144,7 @@ void trun::detail::core::run(result<typename P::clock_type> & res, P & params, F
         if (samples.size() < outer) {
             samples.resize(outer);
         }
-        do_loops(samples, params.warmup, outer, inner, C(),
+        do_loops(samples, params.warmup_batch_size, outer, inner, C(),
                  std::forward<F>(func), std::forward<A>(args)...);
 
         // calculate statistics

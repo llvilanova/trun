@@ -70,7 +70,7 @@ namespace trun {
             trun::detail::parameters::check(res_params);
 
             parameters<C> clock_params(res_params);
-            clock_params.warmup = 1000;
+            clock_params.warmup_batch_size = 1000;
             clock_params.init_batch = 10000;
             clock_params.max_experiments = 1000000000;
 
