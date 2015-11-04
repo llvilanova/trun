@@ -61,6 +61,7 @@ namespace trun {
 #define TRUN_WARMUP_BATCH_SIZE 0
 #define TRUN_RUN_SIZE 30                // minimal statistical significance
 #define TRUN_BATCH_SIZE 1
+#define TRUN_MAX_EXPERIMENTS 1000000
 
     // Run parameters.
     //
@@ -82,8 +83,8 @@ namespace trun {
     // @batch_size: initial number of iterations to batch together
     //     (default: TRUN_BATCH_SIZE)
     //     Every batch is timed separately to reduce clock overheads.
-    // @max_experiments: maximum number of experiments run until non-convergence
-    //     is assumed (runs + batch)
+    // @max_experiments: maximum number of experiments until non-convergence
+    //     (default: TRUN_MAX_EXPERIMENTS)
     //
     // When the clock is auto-calibrated, the same parameters will be used.
     //
@@ -111,9 +112,6 @@ namespace trun {
     namespace time {
 
         // Calibrate clock overheads.
-        //
-        // If any parameter in #parameters is zero, a sane default will be set
-        // and returned.
         template<class Clock>
         parameters<Clock>
         calibrate(const trun::parameters<Clock> & parameters);

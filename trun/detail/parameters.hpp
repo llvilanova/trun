@@ -61,7 +61,7 @@ trun::parameters<C>::parameters()
     ,warmup_batch_size(TRUN_WARMUP_BATCH_SIZE)
     ,run_size(TRUN_RUN_SIZE)
     ,batch_size(TRUN_BATCH_SIZE)
-    ,max_experiments(0)
+    ,max_experiments(TRUN_MAX_EXPERIMENTS)
 {
 }
 

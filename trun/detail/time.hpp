@@ -57,9 +57,6 @@ namespace trun {
             if (res_params.sigma_outlier_perc == 0.0) {
                 res_params.sigma_outlier_perc = 3.0;
             }
-            if (res_params.max_experiments == 0) {
-                res_params.max_experiments = 1000000;
-            }
             trun::detail::parameters::check(res_params);
 
             // clock measurements are going to be fast
