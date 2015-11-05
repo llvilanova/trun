@@ -51,9 +51,6 @@ namespace trun {
             // initialize parameters
             parameters<C> res_params = params;
             res_params.clock_time = typename C::duration(typename C::rep(0));
-            if (res_params.sigma_outlier_perc == 0.0) {
-                res_params.sigma_outlier_perc = 3.0;
-            }
             trun::detail::parameters::check(res_params);
 
             // clock measurements are going to be fast

@@ -42,7 +42,9 @@ namespace trun {
 
                 _TRUN_PARAM_CHECK(clock_time.count(), false);
                 _TRUN_PARAM_CHECK(clock_overhead_perc, false);
-                _TRUN_PARAM_CHECK(mean_err_perc, false);
+                _TRUN_PARAM_CHECK(confidence_sigma, true);
+                _TRUN_PARAM_CHECK(confidence_outlier_sigma, true);
+                _TRUN_PARAM_CHECK(stddev_perc, true);
                 _TRUN_PARAM_CHECK(run_size, true);
                 _TRUN_PARAM_CHECK(batch_size, true);
 #undef _TRUN_PARAM_CHECK
@@ -60,8 +62,9 @@ template<class C>
 trun::parameters<C>::parameters()
     :clock_time(0)
     ,clock_overhead_perc(TRUN_CLOCK_OVERHEAD_PERC)
-    ,mean_err_perc(TRUN_MEAN_ERR_PERC)
-    ,sigma_outlier_perc(0)
+    ,confidence_sigma(TRUN_CONFIDENCE_SIGMA)
+    ,confidence_outlier_sigma(TRUN_CONFIDENCE_OUTLIER_SIGMA)
+    ,stddev_perc(TRUN_STDDEV_PERC)
     ,warmup_batch_size(TRUN_WARMUP_BATCH_SIZE)
     ,run_size(TRUN_RUN_SIZE)
     ,batch_size(TRUN_BATCH_SIZE)

@@ -83,14 +83,7 @@ namespace trun {
                 }
             }
 
-            template<class Clock>
-            class result : public ::trun::result<Clock>
-            {
-            public:
-                size_t count;
-            };
-
-            template<bool nooutliers, class Clock>
+            template<bool first, class Clock>
             static inline
             result<Clock> stats(const parameters<Clock> &params,
                                 std::vector<typename result<Clock>::duration::rep> &samples,
@@ -100,47 +93,48 @@ namespace trun {
                 using rep_type = typename result<Clock>::duration::rep;
 
                 result<Clock> res;
-                res.min = res.min_nooutliers = duration_raw<Clock>(
+                res.min = res.min_all = duration_raw<Clock>(
                     std::numeric_limits<rep_type>::max());
-                res.max = res.max_nooutliers = duration_raw<Clock>(
+                res.max = res.max_all = duration_raw<Clock>(
                     std::numeric_limits<rep_type>::min());
+                res.run_size = 0;
+                res.run_size_all = params.run_size;
+                res.batch_size = params.batch_size;
 
+                rep_type outlier = params.confidence_outlier_sigma * sigma;
+                if (first) {
+                    outlier = std::numeric_limits<rep_type>::max();
+                }
                 rep_type sum = 0;
                 rep_type sq_sum = 0;
-                res.count = 0;
 
                 const auto it_end = samples.begin() + params.run_size;
                 for (auto it = samples.begin(); it != it_end; it++) {
+                    // normalize to per-experiment results
                     auto elem = *it;
-                    if (!nooutliers) {
-                        elem = elem / params.batch_size;
-                        *it = elem;
+                    elem = elem / params.batch_size;
+
+                    // statistics of all experiments
+                    res.min_all = std::min(duration_raw<Clock>(elem), res.min_all);
+                    res.max_all = std::max(duration_raw<Clock>(elem), res.max_all);
+
+                    // ignore outliers
+                    if (std::abs(elem - mean) > outlier) {
+                        // printf("x %f | %f | %f | %f | %d\n", elem, mean, sigma, outlier, first);
+                        continue;
                     }
 
-                    if (!nooutliers ||
-                        std::abs(elem - mean) < (params.sigma_outlier_perc * sigma)) {
-                        if (nooutliers) {
-                            res.min_nooutliers = std::min(duration_raw<Clock>(elem),
-                                                          res.min_nooutliers);
-                            res.max_nooutliers = std::max(duration_raw<Clock>(elem),
-                                                          res.max_nooutliers);
-                        } else {
-                            res.min = std::min(duration_raw<Clock>(elem), res.min);
-                            res.max = std::max(duration_raw<Clock>(elem), res.max);
-                        }
-
-                        sum += elem;
-                        sq_sum += std::pow(elem, 2);
-                        res.count++;
-                    }
+                    // statistics of non-outliers
+                    *it = elem;
+                    res.min = std::min(duration_raw<Clock>(elem), res.min);
+                    res.max = std::max(duration_raw<Clock>(elem), res.max);
+                    sum += elem;
+                    sq_sum += std::pow(elem, 2);
+                    res.run_size++;
                 }
 
-                if (res.count == 0) {
-                    errx(1, "unexpected error");
-                }
-
-                rep_type s_mean = sum / res.count;
-                rep_type s_variance = (sq_sum / res.count) - std::pow(s_mean, 2);
+                rep_type s_mean = sum / res.run_size;
+                rep_type s_variance = (sq_sum / res.run_size) - std::pow(s_mean, 2);
                 rep_type s_sigma = std::sqrt(s_variance);
 
                 res.mean = duration_raw<Clock>(s_mean);
@@ -157,25 +151,27 @@ namespace trun {
 //
 // Returns the mean time of one workload unit.
 //
+// NOTE: stddev == 2*sigma
+//
 // Runs two nested loops:
 // - run_size
 //   - Calculates mean and standard error; adds resiliency against
 //     transient noise.
 //   - Dynamically sized according to:
-//       http://en.wikipedia.org/wiki/Sample_size_determination#Estimation_of_means
-//         run_size = 16 * sigma^2 / width^2
-//         width = mean * mean_err
+//       https://en.wikipedia.org/wiki/Sample_size_determination#Means
+//         run_size = (2 * confidence_sigma * sigma)^2 / width^2
+//         width = mean * stddev_perc
 //         sigma^2 = variance
 //       Increase capped to 'max_run_size_multiplier'.
 // - batch_size
 //   - Aggregates workload on batches; minimizes clock overheads.
 //   - Dynamically sized until:
-//       clock_time <= #batch_size * mean * clock_overhead
+//       clock_time <= #batch_size * (mean - sigma) * clock_overhead
 //       Increase capped to 'max_batch_size_multiplier' (if not 'calibrating')
 //
 // Stops when:
-//   sigma <= mean_err * mean  => mean
-//   total runs >= max_experiments  => mean with lowest sigma
+//   stddev <= mean * (stddev_perc / 100)  --> mean
+//   total runs >= max_experiments         --> mean with lowest sigma
 template<bool calibrating, class P, class F, class... A>
 static inline
 void trun::detail::core::run(::trun::result<typename P::clock_type> & res, P & params, F&& func, A&&... args)
@@ -183,14 +179,17 @@ void trun::detail::core::run(::trun::result<typename P::clock_type> & res, P & p
     using C = typename P::clock_type;
     using rep_type = typename result<C>::duration::rep;
 
-    size_t max_run_size_multiplier = 2;
-    size_t max_batch_size_multiplier = 2;
+    double max_run_size_multiplier = 3;
+    double max_batch_size_multiplier = 3;
     parameters<C> p = params;
     double clock_overhead = p.clock_overhead_perc / 100;
-    double mean_err = p.mean_err_perc / 100;
+    double stddev_ratio = p.stddev_perc / 100;
     size_t old_batch_size;
 
     std::vector<rep_type> samples(p.run_size);
+    result<C> res_prev;
+    res_prev.sigma = duration_raw<C>(0);
+    res_prev.mean = duration_raw<C>(0);
     result<C> res_curr;
     result<C> res_best;
     res_best.sigma = duration_raw<C>(std::numeric_limits<rep_type>::max());
@@ -200,10 +199,10 @@ void trun::detail::core::run(::trun::result<typename P::clock_type> & res, P & p
     size_t experiments = 0;
     size_t iterations = 0;
 
-    DEBUG("clock_overhead_perc=%f mean_err_perc=%f warmup=%lu "
-          "runs_size=%lu batch_size=%lu max_experiments=%lu",
-          p.clock_overhead_perc, p.mean_err_perc, p.warmup_batch_size,
-          p.run_size, p.batch_size, p.max_experiments);
+    DEBUG("clock_overhead_perc=%f confidence_sigma=%f stddev_perc=%f"
+          "warmup=%lu runs_size=%lu batch_size=%lu max_experiments=%lu",
+          p.clock_overhead_perc, p.confidence_sigma, p.stddev_perc,
+          p.warmup_batch_size, p.run_size, p.batch_size, p.max_experiments);
 
     do {
         old_batch_size = p.batch_size;
@@ -220,32 +219,36 @@ void trun::detail::core::run(::trun::result<typename P::clock_type> & res, P & p
         iterations++;
 
         // calculate statistics
-        {
-            result<C> res_all = stats<false>(p, samples, 0, 0);
-            res_curr = stats<true>(p, samples, res_all.mean.count(), res_all.sigma.count());
+        res_prev = res_curr;
+        if (iterations == 1) {
+            res_curr = stats<true>(p, samples, res_prev.mean.count(), res_prev.sigma.count());
+        } else {
+            res_curr = stats<false>(p, samples, res_prev.mean.count(), res_prev.sigma.count());
         }
-        auto width = res_curr.mean.count() * mean_err;
+        auto width = res_curr.mean.count() * stddev_ratio;
 
         // keep track of best result in case we hit the run limit
         if (res_curr.sigma < res_best.sigma) {
             res_best = res_curr;
         }
 
-        DEBUG("mean=%f sigma=%f width=%f run_size=%lu run_size_nooutl=%lu batch_size=%lu experiments=%lu",
+        DEBUG("mean=%f sigma=%f width=%f run_size=%lu batch_size=%lu experiments=%lu",
               res_curr.mean.count(), res_curr.sigma.count(), width,
-              p.run_size, res_curr.count, p.batch_size, experiments);
+              p.run_size, p.batch_size, experiments);
 
         // update 'clock_time' if we're in calibration mode
         update_clock_time<calibrating>(p, res_curr.mean);
 
         // keep timing overhead under control
-        //     clock_time <= batch_size * (mean - sigma) * clock_overhead
         {
             // conservative mean for calculating batch
             auto mean = res_curr.mean.count() - res_curr.sigma.count();
+            if (mean < 0) {
+                mean = res_curr.mean.count();
+            }
             auto max_batch_size = p.batch_size * max_batch_size_multiplier;
             auto min_batch_size = p.batch_size / max_batch_size_multiplier;
-            auto new_batch_size = std::ceil(p.clock_time.count() / (mean * clock_overhead));
+            auto new_batch_size = p.clock_time.count() / (mean * clock_overhead);
             if (new_batch_size > max_batch_size && iterations == 1) {
                 p.batch_size = std::ceil(max_batch_size);
             } else if (new_batch_size < min_batch_size && iterations > 1) {
@@ -255,18 +258,27 @@ void trun::detail::core::run(::trun::result<typename P::clock_type> & res, P & p
             }
         }
 
-        // keep standard error in 95% under 'mean_err'
+        // calculate new population size
         {
-            auto new_run_size = 16.0 * pow(res_curr.sigma.count(), 2) / pow(width, 2);
-            if (new_run_size > p.run_size * max_run_size_multiplier) {
-                p.run_size = std::ceil(p.run_size * max_run_size_multiplier);
-            } else if (new_run_size < params.run_size) {
-                p.run_size = params.run_size;
-            } else if (p.batch_size <= old_batch_size && new_run_size < p.run_size) {
-                // do not decrease run_size if we did not increase batch_size
-            } else {
+            auto old_run_size = p.run_size;
+            auto max_run_size = p.run_size * max_run_size_multiplier;
+            auto min_run_size = p.run_size / max_run_size_multiplier;
+            auto new_run_size = pow((2 * p.confidence_sigma * res_curr.sigma.count()) / width, 2);
+            if (new_run_size > max_run_size && iterations == 1) {
+                p.run_size = std::ceil(max_run_size);
+            } else if (new_run_size < min_run_size && iterations > 1) {
+                p.run_size = std::ceil(min_run_size);
+            } else if (new_run_size > p.run_size){
                 p.run_size = std::ceil(new_run_size);
             }
+            if (old_run_size >= TRUN_RUN_SIZE && p.run_size < TRUN_RUN_SIZE) {
+                p.run_size = TRUN_RUN_SIZE;
+            }
+        }
+
+        // check if results are significant
+        if (res_curr.run_size < TRUN_RUN_SIZE && res_curr.run_size < p.run_size) {
+            continue;
         }
 
         // exit conditions
@@ -284,8 +296,6 @@ void trun::detail::core::run(::trun::result<typename P::clock_type> & res, P & p
     } else {
         res = res_curr;
     }
-    res.run_size = p.run_size;
-    res.batch_size = p.batch_size;
     res.converged = !hit_max;
 }
 
