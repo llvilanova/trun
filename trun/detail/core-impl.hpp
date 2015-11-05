@@ -70,12 +70,14 @@ namespace trun {
             {
                 for (size_t i = 0; i < warmup; i++) {
                     func(std::forward<Args>(args)...);
+                    asm volatile("" : : : "memory");
                 }
 
                 for (size_t i = 0; i < run_size; i++) {
                     auto start = clock.now();
                     for (size_t j = 0; j < batch_size; j++) {
                         func(std::forward<Args>(args)...);
+                        asm volatile("" : : : "memory");
                     }
                     auto end = clock.now();
                     auto delta = duration_clock<C>(end - start);
