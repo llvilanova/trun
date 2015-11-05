@@ -120,9 +120,14 @@ namespace trun {
     namespace time {
 
         // Calibrate clock overheads.
+        //
+        // Uses slightly better parameters than the default ones.
         template<class Clock>
-        parameters<Clock>
-        calibrate(const trun::parameters<Clock> & parameters);
+        parameters<Clock> calibrate();
+
+        // Calibrate clock overheads.
+        template<class Clock>
+        parameters<Clock> calibrate(const trun::parameters<Clock> & parameters);
 
     }
 
@@ -138,7 +143,8 @@ namespace trun {
     // This assumes that experiments follow a gaussian distribution, and ignores
     // those beyond #parameters.confidence_outlier_sigma * sigma of the mean:
     //
-    // If #parameters.clock_time is zero, #time::calibrate will be used.
+    // If #parameters.clock_time is zero, #time::calibrate with default
+    // parameters will be used.
     //
     // It accounts for time measurement overheads by ensuring that:
     //
@@ -150,6 +156,9 @@ namespace trun {
     result<Clock> && run(const parameters<Clock> & parameters,
                          Func&& func, Args&&... args);
 
+    // Same with default parameters
+    template<class Clock, class Func, class... Args>
+    result<Clock> && run(Func&& func, Args&&... args);
 }
 
 #include <trun/detail/run.hpp>

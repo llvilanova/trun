@@ -49,6 +49,14 @@ namespace trun {
         return std::move(res);
     }
 
+    template<class C, class F, class... A>
+    result<C> && run(F&& func, A&&... args)
+    {
+        auto params = time::calibrate<C>();
+        return std::move(run(std::forward<parameters<C>>(params),
+                             std::forward<F>(func), std::forward<A>(args)...));
+    }
+
 }
 
 #endif // TRUN__DETAIL__RUN_HPP

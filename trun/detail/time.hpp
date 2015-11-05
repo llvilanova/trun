@@ -43,8 +43,7 @@ namespace trun {
         }
 
         template<class C>
-        parameters<C>
-        calibrate(const parameters<C> & params)
+        parameters<C> calibrate(const parameters<C> & params)
         {
             detail::check<C>();
 
@@ -53,21 +52,31 @@ namespace trun {
             res_params.clock_time = typename C::duration(typename C::rep(0));
             trun::detail::parameters::check(res_params);
 
-            // clock measurements are going to be fast
-            parameters<C> clock_params(res_params);
-            clock_params.warmup_batch_size = 1000;
-            clock_params.batch_size = 10000;
-            clock_params.max_experiments = 1000000000;
-
             INFO("Calibrating clock overheads...");
             result<C> res;
-            trun::detail::core::run<true>(res, clock_params, C::now);
+            trun::detail::core::run<true>(res, params, C::now);
             if (!res.converged) {
                 errx(1, "clock calibration did not converge");
             }
 
             res_params.clock_time = detail::clock_units<C>(res.mean);
 
+            return std::move(res_params);
+        }
+
+        template<class C>
+        parameters<C> calibrate()
+        {
+            parameters<C> res_params;
+
+            auto clock_params = res_params;
+            clock_params.confidence_sigma = 3; // 99.73%
+            clock_params.warmup_batch_size = 1000;
+            clock_params.batch_size = 10000;
+            clock_params.max_experiments = 1000000000;
+            clock_params = calibrate(clock_params);
+
+            res_params.clock_time = clock_params.clock_time;
             return std::move(res_params);
         }
 
