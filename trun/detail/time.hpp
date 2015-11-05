@@ -51,9 +51,6 @@ namespace trun {
             // initialize parameters
             parameters<C> res_params = params;
             res_params.clock_time = typename C::duration(typename C::rep(0));
-            if (res_params.mean_err_perc == 0) {
-                res_params.mean_err_perc = 0.01;
-            }
             if (res_params.sigma_outlier_perc == 0.0) {
                 res_params.sigma_outlier_perc = 3.0;
             }

@@ -59,7 +59,8 @@ namespace trun {
         bool converged;
     };
 
-#define TRUN_CLOCK_OVERHEAD_PERC 0.001
+#define TRUN_CLOCK_OVERHEAD_PERC 0.1
+#define TRUN_MEAN_ERR_PERC 1
 #define TRUN_WARMUP_BATCH_SIZE 0
 #define TRUN_RUN_SIZE 30                // minimal statistical significance
 #define TRUN_BATCH_SIZE 1
@@ -73,8 +74,8 @@ namespace trun {
     // @clock_overhead_perc: target clock overhead percentage
     //     (default: TRUN_CLOCK_OVERHEAD_PERC)
     //     Respective to the time of a single measurement.
-    // @mean_err_perc: keep running until
-    //     standard error <= mean * mean_err_perc
+    // @mean_err_perc: target standard error as a percentage of the mean
+    //     (default: TRUN_MEAN_ERR_PERC)
     // @sigma_outlier_perc: consider outliers those where
     //     |elem - mean| >= sigma_outlier_perc * sigma
     // @warmup_batch_size: number of experiments before every round
@@ -92,6 +93,9 @@ namespace trun {
     //
     // The batch size will be increased until:
     //     clock_time <= mean * (clock_overhead_perc / 100)
+    //
+    // Experiments will keep running until:
+    //     standard error <= mean * (mean_err_perc / 100)
     template<class Clock>
     class parameters
     {

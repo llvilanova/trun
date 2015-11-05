@@ -60,7 +60,7 @@ template<class C>
 trun::parameters<C>::parameters()
     :clock_time(0)
     ,clock_overhead_perc(TRUN_CLOCK_OVERHEAD_PERC)
-    ,mean_err_perc(0)
+    ,mean_err_perc(TRUN_MEAN_ERR_PERC)
     ,sigma_outlier_perc(0)
     ,warmup_batch_size(TRUN_WARMUP_BATCH_SIZE)
     ,run_size(TRUN_RUN_SIZE)

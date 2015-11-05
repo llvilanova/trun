@@ -170,7 +170,7 @@ namespace trun {
 // - batch_size
 //   - Aggregates workload on batches; minimizes clock overheads.
 //   - Dynamically sized until:
-//       clock_time <= #batch_size * mean * clock_overhead_perc
+//       clock_time <= #batch_size * mean * clock_overhead
 //       Increase capped to 'max_batch_size_multiplier' (if not 'calibrating')
 //
 // Stops when:
