@@ -94,8 +94,8 @@ namespace trun {
             static inline
             result<Clock> stats(const parameters<Clock> &params,
                                 std::vector<typename result<Clock>::duration::rep> &samples,
-                                typename result<Clock>::duration::rep mean,
-                                typename result<Clock>::duration::rep sigma)
+                                const typename result<Clock>::duration::rep mean,
+                                const typename result<Clock>::duration::rep sigma)
             {
                 using rep_type = typename result<Clock>::duration::rep;
 
@@ -164,8 +164,8 @@ namespace trun {
 //   - Dynamically sized according to:
 //       http://en.wikipedia.org/wiki/Sample_size_determination#Estimation_of_means
 //         run_size = 16 * sigma^2 / width^2
-//         width = mean * mean_err_perc
-//         sima^2 = variance
+//         width = mean * mean_err
+//         sigma^2 = variance
 //       Increase capped to 'max_run_size_multiplier'.
 // - batch_size
 //   - Aggregates workload on batches; minimizes clock overheads.
@@ -174,7 +174,7 @@ namespace trun {
 //       Increase capped to 'max_batch_size_multiplier' (if not 'calibrating')
 //
 // Stops when:
-//   sigma <= mean_err_perc * mean  => mean
+//   sigma <= mean_err * mean  => mean
 //   total runs >= max_experiments  => mean with lowest sigma
 template<bool calibrating, class P, class F, class... A>
 static inline
@@ -186,6 +186,9 @@ void trun::detail::core::run(::trun::result<typename P::clock_type> & res, P & p
     size_t max_run_size_multiplier = 2;
     size_t max_batch_size_multiplier = 2;
     parameters<C> p = params;
+    double clock_overhead = p.clock_overhead_perc / 100;
+    double mean_err = p.mean_err_perc / 100;
+    size_t old_batch_size;
 
     std::vector<rep_type> samples(p.run_size);
     result<C> res_curr;
@@ -195,9 +198,7 @@ void trun::detail::core::run(::trun::result<typename P::clock_type> & res, P & p
     bool match = false;
     bool hit_max = false;
     size_t experiments = 0;
-    // increase batch_size every iterations_check iterations
     size_t iterations = 0;
-    size_t iterations_check = 10;
 
     DEBUG("clock_overhead_perc=%f mean_err_perc=%f warmup=%lu "
           "runs_size=%lu batch_size=%lu max_experiments=%lu",
@@ -205,6 +206,8 @@ void trun::detail::core::run(::trun::result<typename P::clock_type> & res, P & p
           p.run_size, p.batch_size, p.max_experiments);
 
     do {
+        old_batch_size = p.batch_size;
+
         // run experiment batches
         if (samples.size() < p.run_size) {
             samples.resize(p.run_size);
@@ -213,16 +216,15 @@ void trun::detail::core::run(::trun::result<typename P::clock_type> & res, P & p
         }
         loops(samples, p.warmup_batch_size, p.run_size, p.batch_size, C(),
               std::forward<F>(func), std::forward<A>(args)...);
+        experiments += (p.run_size * p.batch_size);
+        iterations++;
 
         // calculate statistics
         {
             result<C> res_all = stats<false>(p, samples, 0, 0);
             res_curr = stats<true>(p, samples, res_all.mean.count(), res_all.sigma.count());
         }
-        auto width = res_curr.mean.count() * p.mean_err_perc;
-
-        iterations++;
-        experiments += (p.run_size * p.batch_size);
+        auto width = res_curr.mean.count() * mean_err;
 
         // keep track of best result in case we hit the run limit
         if (res_curr.sigma < res_best.sigma) {
@@ -236,24 +238,24 @@ void trun::detail::core::run(::trun::result<typename P::clock_type> & res, P & p
         // update 'clock_time' if we're in calibration mode
         update_clock_time<calibrating>(p, res_curr.mean);
 
-        // keep timing overhead under 'clock_overhead_perc'
-        //     clock_time <= new_batch_size * mean * clock_overhead_perc
-        auto old_batch_size = p.batch_size;
+        // keep timing overhead under control
+        //     clock_time <= batch_size * (mean - sigma) * clock_overhead
         {
-            auto new_batch_size = ((p.clock_time.count() / p.clock_overhead_perc) /
-                                   res_curr.mean.count());
-            if (!calibrating && new_batch_size > p.batch_size * max_batch_size_multiplier) {
-                p.batch_size = std::ceil(p.batch_size * max_batch_size_multiplier);
-            } else if (new_batch_size > p.batch_size) {
+            // conservative mean for calculating batch
+            auto mean = res_curr.mean.count() - res_curr.sigma.count();
+            auto max_batch_size = p.batch_size * max_batch_size_multiplier;
+            auto min_batch_size = p.batch_size / max_batch_size_multiplier;
+            auto new_batch_size = std::ceil(p.clock_time.count() / (mean * clock_overhead));
+            if (new_batch_size > max_batch_size && iterations == 1) {
+                p.batch_size = std::ceil(max_batch_size);
+            } else if (new_batch_size < min_batch_size && iterations > 1) {
+                p.batch_size = std::ceil(min_batch_size);
+            } else if (new_batch_size > p.batch_size){
                 p.batch_size = std::ceil(new_batch_size);
-            }
-            // increase batch_size if we're not converging
-            if (!match && iterations % iterations_check == 0) {
-                p.batch_size *= max_batch_size_multiplier;
             }
         }
 
-        // keep standard error in 95% under 'mean_err_perc'
+        // keep standard error in 95% under 'mean_err'
         {
             auto new_run_size = 16.0 * pow(res_curr.sigma.count(), 2) / pow(width, 2);
             if (new_run_size > p.run_size * max_run_size_multiplier) {
@@ -272,8 +274,10 @@ void trun::detail::core::run(::trun::result<typename P::clock_type> & res, P & p
         if (!match && experiments >= p.max_experiments) {
             hit_max = true;
         }
-
-    } while((!match || (calibrating && iterations < 2)) && !hit_max);
+    } while((!match
+             || (calibrating && iterations < 2)
+             || (!calibrating && old_batch_size < 2))
+            && !hit_max);
 
     if (hit_max) {
         res = res_best;
