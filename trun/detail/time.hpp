@@ -53,13 +53,19 @@ namespace trun {
             trun::detail::parameters::check(res_params);
 
             INFO("Calibrating clock overheads...");
+            auto time = []() {
+                auto t1 = C::now();
+                (void)t1;
+                auto t2 = C::now();
+                (void)t2;
+            };
             result<C> res;
-            trun::detail::core::run<true>(res, params, C::now);
+            trun::detail::core::run<true>(res, params, time);
             if (!res.converged) {
                 errx(1, "clock calibration did not converge");
             }
 
-            res_params.clock_time = detail::clock_units<C>(res.mean);
+            res_params.clock_time = res.mean;
 
             return std::move(res_params);
         }
