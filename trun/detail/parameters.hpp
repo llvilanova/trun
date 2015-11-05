@@ -46,6 +46,10 @@ namespace trun {
                 _TRUN_PARAM_CHECK(run_size, true);
                 _TRUN_PARAM_CHECK(batch_size, true);
 #undef _TRUN_PARAM_CHECK
+
+                if (params.run_size < TRUN_RUN_SIZE) {
+                    warnx("run_size is not statistically significant (< %d)", TRUN_RUN_SIZE);
+                }
             }
 
         }
