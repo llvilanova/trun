@@ -30,7 +30,7 @@
 namespace trun {
 
     template<class C, class F, class... A>
-    result<C> && run(const parameters<C> & params, F&& func, A&&... args)
+    result<C> run(const parameters<C> & params, F&& func, A&&... args)
     {
         result<C> res;
         if (params.clock_time.count() == 0) {
@@ -46,15 +46,15 @@ namespace trun {
         }
         res.mean = time::detail::clock_units<C>(res.mean);
         res.sigma = time::detail::clock_units<C>(res.sigma);
-        return std::move(res);
+        return res;
     }
 
     template<class C, class F, class... A>
-    result<C> && run(F&& func, A&&... args)
+    result<C> run(F&& func, A&&... args)
     {
         auto params = time::calibrate<C>();
-        return std::move(run(std::forward<parameters<C>>(params),
-                             std::forward<F>(func), std::forward<A>(args)...));
+        return run(std::forward<parameters<C>>(params),
+                   std::forward<F>(func), std::forward<A>(args)...);
     }
 
 }

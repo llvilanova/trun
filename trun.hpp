@@ -153,12 +153,12 @@ namespace trun {
     // If results do not converge (#parameters.max_experiments is reached),
     // return the mean with lowest standard deviation found so far.
     template<class Clock, class Func, class... Args>
-    result<Clock> && run(const parameters<Clock> & parameters,
-                         Func&& func, Args&&... args);
+    result<Clock> run(const parameters<Clock> & parameters,
+                      Func&& func, Args&&... args);
 
     // Same with default parameters
     template<class Clock, class Func, class... Args>
-    result<Clock> && run(Func&& func, Args&&... args);
+    result<Clock> run(Func&& func, Args&&... args);
 }
 
 #include <trun/detail/run.hpp>
