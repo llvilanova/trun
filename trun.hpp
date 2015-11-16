@@ -124,7 +124,7 @@ namespace trun {
         // Calibrate clock overheads.
         //
         // Uses slightly better parameters than the default ones.
-        template<class Clock>
+        template<class Clock = std::chrono::steady_clock>
         parameters<Clock> calibrate();
 
         // Calibrate clock overheads.
@@ -156,11 +156,11 @@ namespace trun {
     //
     // If results do not converge (#parameters.max_experiments is reached),
     // return the mean with lowest standard deviation found so far.
-    template<class Clock, class Func>
+    template<class Clock = std::chrono::steady_clock, class Func>
     result<Clock> run(const parameters<Clock> & parameters, Func&& func);
 
     // Same with default parameters
-    template<class Clock, class Func>
+    template<class Clock = std::chrono::steady_clock, class Func>
     result<Clock> run(Func&& func);
 
     namespace dump {
