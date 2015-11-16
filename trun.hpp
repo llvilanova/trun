@@ -24,6 +24,8 @@
 
 #include <chrono>
 #include <cstddef>
+#include <iostream>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -159,8 +161,35 @@ namespace trun {
     // Same with default parameters
     template<class Clock, class Func, class... Args>
     result<Clock> run(Func&& func, Args&&... args);
+
+    namespace dump {
+
+        // Helper to get an output stream from a path to a file
+        std::ofstream stream(const std::string & output);
+
+        // Dump results using comma-separate value (CSV) format
+        //
+        // @results: the results to dump
+        // @output: output stream
+        // @show_header: whether to dump the CSV header
+        // @force_converged: fail if results are not converged
+        template<class Ratio = std::nano, class Clock>
+        void csv(const result<Clock> &results,
+                 std::ostream &output = std::cout,
+                 bool show_header = true,
+                 bool force_converged = true);
+
+        // Dump CSV header
+        template<class Ratio = std::nano, class Clock>
+        void csv_header(const result<Clock> &results,
+                        std::ostream &output = std::cout,
+                        bool show_header = true,
+                        bool force_converged = true);
+
+    }
 }
 
 #include <trun/detail/run.hpp>
+#include <trun/detail/dump.hpp>
 
 #endif // TRUN_HPP
