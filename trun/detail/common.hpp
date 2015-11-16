@@ -27,16 +27,24 @@
 #define TRUN_DEBUG_TIME std::pico
 #endif
 
-#if defined(NDEBUG) && !TRUN_DEBUG
+#if defined(TRUN_DEBUG)
+#if (defined(NDEBUG) && !TRUN_DEBUG) || !TRUN_DEBUG
 #define DEBUG(args...)
 #else
-#define DEBUG(args...) warnx(args)
+#define DEBUG(args...) warnx("[trun] " args)
+#endif
+#else
+#define DEBUG(args...)
 #endif
 
-#if defined(NDEBUG) && !TRUN_INFO
+#if defined(TRUN_INFO)
+#if (defined(NDEBUG) && !TRUN_INFO) || !TRUN_INFO
 #define INFO(args...)
 #else
-#define INFO(args...) warnx(args)
+#define INFO(args...) warnx("[trun] " args)
+#endif
+#else
+#define INFO(args...)
 #endif
 
 #endif // TRUN__DETAIL__COMMON_HPP
