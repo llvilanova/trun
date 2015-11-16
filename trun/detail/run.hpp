@@ -29,32 +29,29 @@
 
 namespace trun {
 
-    template<class C, class F, class... A>
-    result<C> run(const parameters<C> & params, F&& func, A&&... args)
+    template<class C, class F>
+    result<C> run(const parameters<C> & params, F&& func)
     {
         result<C> res;
         if (params.clock_time.count() == 0) {
             auto new_params = time::calibrate(params);
             INFO("Executing benchmark...");
-            trun::detail::core::run<false>(res, new_params,
-                                           std::forward<F>(func), std::forward<A>(args)...);
+            trun::detail::core::run<false>(res, new_params, std::forward<F>(func));
         } else {
             detail::parameters::check(params);
             INFO("Executing benchmark...");
-            trun::detail::core::run<false>(res, params,
-                                           std::forward<F>(func), std::forward<A>(args)...);
+            trun::detail::core::run<false>(res, params, std::forward<F>(func));
         }
         res.mean = time::detail::clock_units<C>(res.mean);
         res.sigma = time::detail::clock_units<C>(res.sigma);
         return res;
     }
 
-    template<class C, class F, class... A>
-    result<C> run(F&& func, A&&... args)
+    template<class C, class F>
+    result<C> run(F&& func)
     {
         auto params = time::calibrate<C>();
-        return run(std::forward<parameters<C>>(params),
-                   std::forward<F>(func), std::forward<A>(args)...);
+        return run(std::forward<parameters<C>>(params), std::forward<F>(func));
     }
 
 }

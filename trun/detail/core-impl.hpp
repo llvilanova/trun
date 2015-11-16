@@ -63,28 +63,45 @@ namespace trun {
             {
             }
 
-
-            template<class R, class C, class F, class... Args>
-            static inline
-            void loops(std::vector<R> & samples,
-                       const size_t warmup, const size_t run_size, const size_t batch_size,
-                       C clock, F&& func, Args&&... args)
+            template<class C, class R, class F>
+            static __attribute__((noinline))
+            void loops_warmup(std::vector<R> & samples,
+                              const size_t warmup, const size_t run_size, const size_t batch_size,
+                              F&& func)
             {
                 for (size_t i = 0; i < warmup; i++) {
-                    func(std::forward<Args>(args)...);
+                    func();
                     asm volatile("" : : : "memory");
                 }
+            }
 
+            template<class C, class R, class F>
+            static __attribute__((noinline))
+            void loops_work(std::vector<R> & samples,
+                            const size_t warmup, const size_t run_size, const size_t batch_size,
+                            F&& func)
+            {
                 for (size_t i = 0; i < run_size; i++) {
-                    auto start = clock.now();
+                    auto start = C::now();
                     for (size_t j = 0; j < batch_size; j++) {
-                        func(std::forward<Args>(args)...);
+                        func();
                         asm volatile("" : : : "memory");
                     }
-                    auto end = clock.now();
+                    auto end = C::now();
                     auto delta = duration_clock<C>(end - start);
                     samples[i] = delta.count();
                 }
+            }
+
+            template<class C, class R, class F>
+            static inline
+            void loops(std::vector<R> & samples,
+                       const size_t warmup, const size_t run_size, const size_t batch_size,
+                       F&& func)
+            {
+                // NOTE: not inlined to allow more optimizations on each phase
+                loops_warmup<C>(samples, warmup, run_size, batch_size, std::forward<F>(func));
+                loops_work<C>(samples, warmup, run_size, batch_size, std::forward<F>(func));
             }
 
             template<bool first, class Clock>
@@ -151,7 +168,7 @@ namespace trun {
     }
 }
 
-// Run workload 'func(args...)' until timing stabilizes.
+// Run workload 'func()' until timing stabilizes.
 //
 // Returns the mean time of one workload unit.
 //
@@ -176,9 +193,9 @@ namespace trun {
 // Stops when:
 //   stddev <= mean * (stddev_perc / 100)  --> mean
 //   total runs >= max_experiments         --> mean with lowest sigma
-template<bool calibrating, class P, class F, class... A>
+template<bool calibrating, class P, class F>
 static inline
-void trun::detail::core::run(::trun::result<typename P::clock_type> & res, P & params, F&& func, A&&... args)
+void trun::detail::core::run(::trun::result<typename P::clock_type> & res, P & params, F&& func)
 {
     using C = typename P::clock_type;
     using rep_type = typename result<C>::duration::rep;
@@ -217,8 +234,7 @@ void trun::detail::core::run(::trun::result<typename P::clock_type> & res, P & p
         } else if (samples.size() > p.run_size * 2) {
             samples.resize(p.run_size * 2);
         }
-        loops(samples, p.warmup_batch_size, p.run_size, p.batch_size, C(),
-              std::forward<F>(func), std::forward<A>(args)...);
+        loops<C>(samples, p.warmup_batch_size, p.run_size, p.batch_size, std::forward<F>(func));
         experiments += (p.run_size * p.batch_size);
         iterations++;
 

@@ -134,7 +134,9 @@ namespace trun {
     }
 
 
-    // Time the experiment 'func(args...)'.
+    // Time the experiment 'func()'.
+    //
+    // You can use a functor or a lambda to invoke functions with arguments.
     //
     // The result is ensured with the target confidence
     // (#params.confidence_sigma) to have a standard deviation lower than a
@@ -154,13 +156,12 @@ namespace trun {
     //
     // If results do not converge (#parameters.max_experiments is reached),
     // return the mean with lowest standard deviation found so far.
-    template<class Clock, class Func, class... Args>
-    result<Clock> run(const parameters<Clock> & parameters,
-                      Func&& func, Args&&... args);
+    template<class Clock, class Func>
+    result<Clock> run(const parameters<Clock> & parameters, Func&& func);
 
     // Same with default parameters
-    template<class Clock, class Func, class... Args>
-    result<Clock> run(Func&& func, Args&&... args);
+    template<class Clock, class Func>
+    result<Clock> run(Func&& func);
 
     namespace dump {
 
