@@ -42,7 +42,7 @@ namespace trun {
 
         }
 
-        template<class C>
+        template<class C, bool show_info, bool show_debug>
         parameters<C> calibrate(const parameters<C> & params)
         {
             detail::check<C>();
@@ -52,7 +52,7 @@ namespace trun {
             res_params.clock_time = typename C::duration(typename C::rep(0));
             trun::detail::parameters::check(res_params);
 
-            INFO("Calibrating clock overheads...");
+            trun::detail::info<show_info>("Calibrating clock overheads...");
             auto time = []() {
                 auto t1 = C::now();
                 (void)t1;
@@ -60,7 +60,7 @@ namespace trun {
                 (void)t2;
             };
             result<C> res;
-            trun::detail::core::run<true>(res, params, time);
+            trun::detail::core::run<true, show_info, show_debug>(res, params, time);
             if (!res.converged) {
                 errx(1, "clock calibration did not converge");
             }
@@ -70,7 +70,7 @@ namespace trun {
             return std::move(res_params);
         }
 
-        template<class C>
+        template<class C, bool show_info, bool show_debug>
         parameters<C> calibrate()
         {
             parameters<C> res_params;

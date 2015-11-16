@@ -25,7 +25,7 @@ namespace trun {
     namespace detail {
         namespace core {
 
-            template<bool calibrating, class P, class F>
+            template<bool calibrating, bool show_info, bool show_debug, class P, class F>
             static inline
             void run(result<typename P::clock_type> & res, P & params, F&& func);
 

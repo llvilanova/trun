@@ -193,7 +193,7 @@ namespace trun {
 // Stops when:
 //   stddev <= mean * (stddev_perc / 100)  --> mean
 //   total runs >= max_experiments         --> mean with lowest sigma
-template<bool calibrating, class P, class F>
+template<bool calibrating, bool show_info, bool show_debug, class P, class F>
 static inline
 void trun::detail::core::run(::trun::result<typename P::clock_type> & res, P & params, F&& func)
 {
@@ -220,10 +220,11 @@ void trun::detail::core::run(::trun::result<typename P::clock_type> & res, P & p
     size_t experiments = 0;
     size_t iterations = 0;
 
-    DEBUG("clock_overhead_perc=%f confidence_sigma=%f stddev_perc=%f"
-          "warmup=%lu runs_size=%lu batch_size=%lu max_experiments=%lu",
-          p.clock_overhead_perc, p.confidence_sigma, p.stddev_perc,
-          p.warmup_batch_size, p.run_size, p.batch_size, p.max_experiments);
+    trun::detail::debug<show_debug>(
+        "clock_overhead_perc=%f confidence_sigma=%f stddev_perc=%f"
+        "warmup=%lu runs_size=%lu batch_size=%lu max_experiments=%lu",
+        p.clock_overhead_perc, p.confidence_sigma, p.stddev_perc,
+        p.warmup_batch_size, p.run_size, p.batch_size, p.max_experiments);
 
     do {
         old_batch_size = p.batch_size;
@@ -252,9 +253,10 @@ void trun::detail::core::run(::trun::result<typename P::clock_type> & res, P & p
             res_best = res_curr;
         }
 
-        DEBUG("mean=%f sigma=%f width=%f run_size=%lu batch_size=%lu experiments=%lu",
-              res_curr.mean.count(), res_curr.sigma.count(), width,
-              p.run_size, p.batch_size, experiments);
+        trun::detail::debug<show_debug>(
+            "mean=%f sigma=%f width=%f run_size=%lu batch_size=%lu experiments=%lu",
+            res_curr.mean.count(), res_curr.sigma.count(), width,
+            p.run_size, p.batch_size, experiments);
 
         // update 'clock_time' if we're in calibration mode
         update_clock_time<calibrating>(p, res_curr.mean);

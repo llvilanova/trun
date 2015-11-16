@@ -30,17 +30,6 @@
 #include <vector>
 
 
-// Show debug messages
-#ifndef TRUN_DEBUG
-#define TRUN_DEBUG 0
-#endif
-
-// Show info messages
-#ifndef TRUN_INFO
-#define TRUN_INFO 0
-#endif
-
-
 namespace trun {
 
     // Experiment run results.
@@ -124,11 +113,13 @@ namespace trun {
         // Calibrate clock overheads.
         //
         // Uses slightly better parameters than the default ones.
-        template<class Clock = std::chrono::steady_clock>
+        template<class Clock = std::chrono::steady_clock,
+                 bool show_info = false, bool show_debug = false>
         parameters<Clock> calibrate();
 
         // Calibrate clock overheads.
-        template<class Clock>
+        template<class Clock,
+                 bool show_info = false, bool show_debug = false>
         parameters<Clock> calibrate(const trun::parameters<Clock> & parameters);
 
     }
@@ -160,11 +151,15 @@ namespace trun {
     //
     // If results do not converge (#parameters.max_experiments is reached),
     // return the mean with lowest standard deviation found so far.
-    template<class Clock = std::chrono::steady_clock, class Func>
+    template<class Clock = std::chrono::steady_clock,
+             bool show_info = false, bool show_debug = false,
+             class Func>
     result<Clock> run(const parameters<Clock> & parameters, Func&& func);
 
     // Same with default parameters
-    template<class Clock = std::chrono::steady_clock, class Func>
+    template<class Clock = std::chrono::steady_clock,
+             bool show_info = false, bool show_debug = false,
+             class Func>
     result<Clock> run(Func&& func);
 
     namespace dump {

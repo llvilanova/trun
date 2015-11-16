@@ -21,30 +21,35 @@
 #ifndef TRUN__DETAIL__COMMON_HPP
 #define TRUN__DETAIL__COMMON_HPP 1
 
+#include <err.h>
+
+
 #define __unused(arg) _unused_ ## arg __attribute__((unused))
 
-#ifndef TRUN_DEBUG_TIME
-#define TRUN_DEBUG_TIME std::pico
-#endif
+namespace trun {
+    namespace detail {
 
-#if defined(TRUN_DEBUG)
-#if (defined(NDEBUG) && !TRUN_DEBUG) || !TRUN_DEBUG
-#define DEBUG(args...)
-#else
-#define DEBUG(args...) warnx("[trun] " args)
-#endif
-#else
-#define DEBUG(args...)
-#endif
+        template<bool show, class... Args>
+        static inline
+        void info(const std::string & msg, Args&&...args)
+        {
+            if (show) {
+                std::string s = "[trun] " + msg;
+                warnx(s.c_str(), std::forward<Args>(args)...);
+            }
+        }
 
-#if defined(TRUN_INFO)
-#if (defined(NDEBUG) && !TRUN_INFO) || !TRUN_INFO
-#define INFO(args...)
-#else
-#define INFO(args...) warnx("[trun] " args)
-#endif
-#else
-#define INFO(args...)
-#endif
+        template<bool show, class... Args>
+        static inline
+        void debug(const std::string & msg, Args&&...args)
+        {
+            if (show) {
+                std::string s = "[trun] " + msg;
+                warnx(s.c_str(), std::forward<Args>(args)...);
+            }
+        }
+
+    }
+}
 
 #endif // TRUN__DETAIL__COMMON_HPP
