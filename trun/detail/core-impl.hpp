@@ -78,38 +78,68 @@ namespace trun {
             template<class C, class R, class F>
             static __attribute__((noinline))
             void loops_work(std::vector<R> & samples,
+                            const size_t iteration,
                             const size_t warmup, const size_t run_size, const size_t batch_size,
-                            F&& func)
+                            F&& func,
+                            std::function<void(size_t, size_t, size_t)> && func_iter_start,
+                            std::function<void(size_t, size_t, size_t)> && func_batch_start,
+                            std::function<void(size_t, size_t, size_t)> && func_batch_stop,
+                            std::function<void(size_t, size_t, size_t)> && func_iter_stop)
             {
+                bool func_cb = (func_iter_start != NULL);
+                if (func_cb) {
+                    func_iter_start(iteration, run_size, batch_size);
+                }
+
                 for (size_t i = 0; i < run_size; i++) {
+                    if (func_cb) {
+                        func_batch_start(iteration, i, batch_size);
+                    }
                     auto start = C::now();
                     for (size_t j = 0; j < batch_size; j++) {
                         func();
                         asm volatile("" : : : "memory");
                     }
                     auto end = C::now();
+                    if (func_cb) {
+                        func_batch_stop(iteration, i, batch_size);
+                    }
                     auto delta = duration_clock<C>(end - start);
                     samples[i] = delta.count();
+                }
+
+                if (func_cb) {
+                    func_iter_stop(iteration, run_size, batch_size);
                 }
             }
 
             template<class C, class R, class F>
             static inline
-            void loops(std::vector<R> & samples,
+            void loops(std::vector<R> & samples, const size_t iteration,
                        const size_t warmup, const size_t run_size, const size_t batch_size,
-                       F&& func)
+                       F&& func,
+                       std::function<void(size_t, size_t, size_t)> && func_iter_start,
+                       std::function<void(size_t, size_t, size_t)> && func_batch_start,
+                       std::function<void(size_t, size_t, size_t)> && func_batch_stop,
+                       std::function<void(size_t, size_t, size_t)> && func_iter_stop)
             {
                 // NOTE: not inlined to allow more optimizations on each phase
                 loops_warmup<C>(samples, warmup, run_size, batch_size, std::forward<F>(func));
-                loops_work<C>(samples, warmup, run_size, batch_size, std::forward<F>(func));
+                loops_work<C>(samples, iteration, warmup, run_size, batch_size, std::forward<F>(func),
+                              std::forward<decltype(func_iter_start)>(func_iter_start),
+                              std::forward<decltype(func_batch_stop)>(func_batch_start),
+                              std::forward<decltype(func_batch_start)>(func_batch_stop),
+                              std::forward<decltype(func_iter_stop)>(func_iter_stop));
             }
 
             template<bool first, class Clock>
             static inline
             result<Clock> stats(const parameters<Clock> &params,
+                                const size_t iteration,
                                 std::vector<typename result<Clock>::duration::rep> &samples,
                                 const typename result<Clock>::duration::rep mean,
-                                const typename result<Clock>::duration::rep sigma)
+                                const typename result<Clock>::duration::rep sigma,
+                                std::function<void(size_t, size_t, size_t)> && func_batch_select)
             {
                 using rep_type = typename result<Clock>::duration::rep;
 
@@ -129,10 +159,11 @@ namespace trun {
                 rep_type sum = 0;
                 rep_type sq_sum = 0;
 
-                const auto it_end = samples.begin() + params.run_size;
-                for (auto it = samples.begin(); it != it_end; it++) {
+                bool func_cb = (func_batch_select != NULL);
+
+                for (size_t i = 0; i < params.run_size; i++) {
                     // normalize to per-experiment results
-                    auto elem = *it;
+                    auto elem = samples[i];
                     elem = elem / params.batch_size;
 
                     // statistics of all experiments
@@ -145,8 +176,12 @@ namespace trun {
                         continue;
                     }
 
+                    if (func_cb) {
+                        func_batch_select(iteration, i, params.batch_size);
+                    }
+
                     // statistics of non-outliers
-                    *it = elem;
+                    samples[i] = elem;
                     res.min = std::min(duration_raw<Clock>(elem), res.min);
                     res.max = std::max(duration_raw<Clock>(elem), res.max);
                     sum += elem;
@@ -195,8 +230,21 @@ namespace trun {
 //   total runs >= max_experiments         --> mean with lowest sigma
 template<bool calibrating, bool show_info, bool show_debug, class P, class F>
 static inline
-void trun::detail::core::run(::trun::result<typename P::clock_type> & res, P & params, F&& func)
+void trun::detail::core::run(::trun::result<typename P::clock_type> & res, P & params, F&& func,
+                             std::function<void(size_t, size_t, size_t)> && func_iter_start,
+                             std::function<void(size_t, size_t, size_t)> && func_batch_start,
+                             std::function<void(size_t, size_t, size_t)> && func_batch_stop,
+                             std::function<void(size_t, size_t, size_t)> && func_iter_stop,
+                             std::function<void(size_t, size_t, size_t)> && func_batch_select,
+                             std::function<void(size_t, size_t, size_t)> && func_iter_select)
 {
+    if ((func_iter_start || func_batch_start || func_batch_stop || func_iter_stop ||
+         func_batch_select || func_iter_select) &&
+        (!func_iter_start || !func_batch_start || !func_batch_stop || !func_iter_stop ||
+         !func_batch_select || !func_iter_select)) {
+        errx(1, "[trun] one or more function callbacks are missing");
+    }
+
     using C = typename P::clock_type;
     using rep_type = typename result<C>::duration::rep;
 
@@ -208,15 +256,12 @@ void trun::detail::core::run(::trun::result<typename P::clock_type> & res, P & p
     size_t old_batch_size;
 
     std::vector<rep_type> samples(p.run_size);
-    result<C> res_prev;
+    result<C> res_prev;                 // TODO: remove and use res_best?
     res_prev.sigma = duration_raw<C>(0);
     res_prev.mean = duration_raw<C>(0);
-    result<C> res_curr;
     result<C> res_best;
     res_best.sigma = duration_raw<C>(std::numeric_limits<rep_type>::max());
 
-    bool match = false;
-    bool hit_max = false;
     size_t experiments = 0;
     size_t iterations = 0;
 
@@ -226,7 +271,7 @@ void trun::detail::core::run(::trun::result<typename P::clock_type> & res, P & p
         p.clock_overhead_perc, p.confidence_sigma, p.stddev_perc,
         p.warmup_batch_size, p.run_size, p.batch_size, p.max_experiments);
 
-    do {
+    while (true) {
         old_batch_size = p.batch_size;
 
         // run experiment batches
@@ -235,23 +280,27 @@ void trun::detail::core::run(::trun::result<typename P::clock_type> & res, P & p
         } else if (samples.size() > p.run_size * 2) {
             samples.resize(p.run_size * 2);
         }
-        loops<C>(samples, p.warmup_batch_size, p.run_size, p.batch_size, std::forward<F>(func));
-        experiments += (p.run_size * p.batch_size);
+        loops<C>(samples, iterations, p.warmup_batch_size, p.run_size, p.batch_size,
+                 std::forward<F>(func),
+                 std::forward<decltype(func_iter_start)>(func_iter_start),
+                 std::forward<decltype(func_batch_start)>(func_batch_start),
+                 std::forward<decltype(func_batch_stop)>(func_batch_stop),
+                 std::forward<decltype(func_iter_stop)>(func_iter_stop));
         iterations++;
+        experiments += (p.run_size * p.batch_size);
 
         // calculate statistics
-        res_prev = res_curr;
+        result<C> res_curr;
         if (iterations == 1) {
-            res_curr = stats<true>(p, samples, res_prev.mean.count(), res_prev.sigma.count());
+            res_curr = stats<true>(p, iterations-1, samples,
+                                   res_prev.mean.count(), res_prev.sigma.count(),
+                                   std::forward<decltype(func_batch_select)>(func_batch_select));
         } else {
-            res_curr = stats<false>(p, samples, res_prev.mean.count(), res_prev.sigma.count());
+            res_curr = stats<false>(p, iterations-1, samples,
+                                    res_prev.mean.count(), res_prev.sigma.count(),
+                                    std::forward<decltype(func_batch_select)>(func_batch_select));
         }
         auto width = res_curr.mean.count() * stddev_ratio;
-
-        // keep track of best result in case we hit the run limit
-        if (res_curr.sigma < res_best.sigma) {
-            res_best = res_curr;
-        }
 
         trun::detail::debug<show_debug>(
             "mean=%f sigma=%f width=%f run_size=%lu batch_size=%lu experiments=%lu",
@@ -260,6 +309,34 @@ void trun::detail::core::run(::trun::result<typename P::clock_type> & res, P & p
 
         // update 'clock_time' if we're in calibration mode
         update_clock_time<calibrating>(p, res_curr.mean);
+
+        // check if we're done
+        {
+            bool match = res_curr.sigma.count() <= width;
+            bool can_match = !((calibrating && iterations < 2) ||
+                               (!calibrating && old_batch_size < 2));
+            res_curr.converged = match && can_match;
+            if (match) {
+                res_best = res_curr;
+                if (func_iter_select) {
+                    func_iter_select(iterations-1, p.run_size, p.batch_size);
+                }
+                if (can_match) {
+                    break;
+                }
+            } else {
+                // keep track of best result in case we hit the run limit
+                if (res_curr.sigma < res_best.sigma) {
+                    res_best = res_curr;
+                    if (func_iter_select) {
+                        func_iter_select(iterations-1, p.run_size, p.batch_size);
+                    }
+                }
+                if (experiments >= p.max_experiments && can_match) {
+                    break;
+                }
+            }
+        }
 
         // keep timing overhead under control
         {
@@ -303,22 +380,10 @@ void trun::detail::core::run(::trun::result<typename P::clock_type> & res, P & p
             continue;
         }
 
-        // exit conditions
-        match = res_curr.sigma.count() <= width;
-        if (!match && experiments >= p.max_experiments) {
-            hit_max = true;
-        }
-    } while((!match
-             || (calibrating && iterations < 2)
-             || (!calibrating && old_batch_size < 2))
-            && !hit_max);
-
-    if (hit_max) {
-        res = res_best;
-    } else {
-        res = res_curr;
+        res_prev = res_curr;
     }
-    res.converged = !hit_max;
+
+    res = res_best;
 }
 
 #endif // TRUN__DETAIL__CORE_IMPL_HPP

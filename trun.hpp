@@ -24,6 +24,7 @@
 
 #include <chrono>
 #include <cstddef>
+#include <functional>
 #include <iostream>
 #include <string>
 #include <utility>
@@ -124,6 +125,23 @@ namespace trun {
 
     }
 
+    // Signal start/stop of an interation (outermost loop: all runs + batches)
+    using func_iter_start_type = std::function<void(size_t iter, size_t run_size, size_t batch_size)>;
+    using func_iter_stop_type  = std::function<void(size_t iter, size_t run_size, size_t batch_size)>;
+
+    // Signal start/stop of a run (one batch)
+    using func_batch_start_type = std::function<void(size_t iter, size_t run, size_t batch_size)>;
+    using func_batch_stop_type  = std::function<void(size_t iter, size_t run, size_t batch_size)>;
+
+    // Signal selection of a batch as a non-outlier
+    using func_batch_select_type  = std::function<void(size_t iter, size_t run, size_t batch_size)>;
+
+    // Signal selection of an iteration as candidate for final result.
+    //
+    // The last iteration selected corresponds to the final results.
+    //
+    // Argument #run_size does not include outliers.
+    using func_iter_select_type  = std::function<void(size_t iter, size_t run_size, size_t batch_size)>;
 
     // Time the experiment 'func()'.
     //
@@ -151,16 +169,32 @@ namespace trun {
     //
     // If results do not converge (#parameters.max_experiments is reached),
     // return the mean with lowest standard deviation found so far.
+    //
+    // You can provide the 'func_*' arguments to gather additional statistics on
+    // each batch. See above for their meaning. The timing results do not
+    // include the calls to these functions.
     template<class Clock = std::chrono::steady_clock,
              bool show_info = false, bool show_debug = false,
              class Func>
-    result<Clock> run(const parameters<Clock> & parameters, Func&& func);
+    result<Clock> run(const parameters<Clock> & parameters, Func&& func,
+                      func_iter_start_type && func_iter_start = NULL,
+                      func_batch_start_type && func_batch_start = NULL,
+                      func_batch_stop_type && func_batch_stop = NULL,
+                      func_iter_stop_type && func_iter_stop = NULL,
+                      func_batch_select_type && func_batch_select_stop = NULL,
+                      func_iter_select_type && func_iter_select_stop = NULL);
 
     // Same with default parameters
     template<class Clock = std::chrono::steady_clock,
              bool show_info = false, bool show_debug = false,
              class Func>
-    result<Clock> run(Func&& func);
+    result<Clock> run(Func&& func,
+                      func_iter_start_type && func_iter_start = NULL,
+                      func_batch_start_type && func_batch_start = NULL,
+                      func_batch_stop_type && func_batch_stop = NULL,
+                      func_iter_stop_type && func_iter_stop = NULL,
+                      func_batch_select_type && func_batch_select_stop = NULL,
+                      func_iter_select_type && func_iter_select_stop = NULL);
 
     namespace dump {
 

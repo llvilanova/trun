@@ -33,10 +33,10 @@ namespace trun {
 #define _TRUN_PARAM_CHECK(p, eq)                                        \
                 do {                                                    \
                     if (params.p < 0) {                                 \
-                        errx(1, "cannot have negative '" #p "'");       \
+                        errx(1, "[trun] cannot have negative '" #p "'"); \
                     }                                                   \
                     if (eq && params.p == 0) {                          \
-                        errx(1, "cannot have null '" #p "'");           \
+                        errx(1, "[trun] cannot have null '" #p "'");    \
                     }                                                   \
                 } while (0)
 
@@ -50,7 +50,7 @@ namespace trun {
 #undef _TRUN_PARAM_CHECK
 
                 if (params.run_size < TRUN_RUN_SIZE) {
-                    warnx("run_size is not statistically significant (< %d)", TRUN_RUN_SIZE);
+                    warnx("[trun] run_size is not statistically significant (< %d)", TRUN_RUN_SIZE);
                 }
             }
 
