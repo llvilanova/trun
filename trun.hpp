@@ -136,7 +136,11 @@ namespace trun {
 
     // Time the experiment 'func()'.
     //
-    // You can use a functor or a lambda to invoke functions with arguments.
+    // You can use a functor or a lambda to invoke functions with arguments:
+    //
+    //     auto f = []() { func(args...); };
+    //     auto res = trun::run(f)
+    //     trun::dump::csv<std::nano>(res);
     //
     // The result is ensured with the target confidence
     // (#params.confidence_sigma) to have a standard deviation lower than a
