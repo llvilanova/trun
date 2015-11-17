@@ -123,6 +123,15 @@ namespace trun {
                  bool show_info = false, bool show_debug = false>
         parameters<Clock> calibrate(const trun::parameters<Clock> & parameters);
 
+        // Get the units name for a given clock and ratio.
+        //
+        // Example:
+        //    units<std::nano>(std::chrono::steady_clock()) == "ns"
+        //    units<std::milli>(std::chrono::steady_clock()) == "ms"
+        //    units<std::ratio<60>>(std::chrono::steady_clock()) == "min"
+        template<class Clock, class Ratio>
+        std::string units(const Clock &clock);
+
     }
 
     // Signal start/stop of an interation (outermost loop: all runs + batches)

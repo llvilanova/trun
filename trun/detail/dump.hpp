@@ -77,27 +77,7 @@ namespace trun {
                 return;
             }
 
-            std::string units = "?";
-            if (std::ratio_equal<std::femto, Ratio>::value) {
-                units = "fs";
-            } else if (std::ratio_equal<std::pico, Ratio>::value) {
-                units = "ps";
-            } else if (std::ratio_equal<std::nano, Ratio>::value) {
-                units = "ns";
-            } else if (std::ratio_equal<std::micro, Ratio>::value) {
-                units = "us";
-            } else if (std::ratio_equal<std::milli, Ratio>::value) {
-                units = "ms";
-            } else if (std::ratio_equal<std::ratio<1>, Ratio>::value) {
-                units = "sec";
-            } else if (std::ratio_equal<std::ratio<60>, Ratio>::value) {
-                units = "min";
-            } else if (std::ratio_equal<std::ratio<60*60>, Ratio>::value) {
-                units = "hours";
-            } else if (std::ratio_equal<std::ratio<60*60*24>, Ratio>::value) {
-                units = "days";
-            }
-
+            std::string units = ::trun::time::units<Ratio>(Clock());
             output << "mean(" << units << "),"
                    << "sigma(" << units << "),"
                    << "min(" << units << "),"
