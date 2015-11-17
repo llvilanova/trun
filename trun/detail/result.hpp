@@ -21,6 +21,9 @@
 #ifndef TRUN__DETAIL__RESULT_HPP
 #define TRUN__DETAIL__RESULT_HPP 1
 
+#include <err.h>
+
+
 template<class Clock>
 inline
 trun::result<Clock>
@@ -60,6 +63,8 @@ trun::result<Clock>::convert() const
         res.max_all = Clock::time(this->max_all);
         res.mean = Clock::time(this->mean);
         res.sigma = Clock::time(this->sigma);
+    } else if (!is_cycles<Clock>() && is_cycles<ClockTarget>()) {
+        errx(1, "[trun] not implemented");
     } else {
         res.min = this->min;
         res.min_all = this->min_all;

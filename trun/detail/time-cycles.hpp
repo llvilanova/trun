@@ -181,11 +181,13 @@ trun::time::tsc_barrier_cycles::time_point
 trun::time::tsc_barrier_cycles::now()
 {
 #if (defined(__GNUC__) || defined(__ICC) || defined(__SUNPRO_C)) && defined(__x86_64__)
-    unsigned int eax, ebx, ecx, edx;
+    unsigned int op, eax, ebx, ecx, edx;
     unsigned high, low, signature;
     asm volatile("rdtscp" : "=a" (low), "=d" (high), "=c"(signature));
+    op = 0;
     asm volatile("cpuid"
-                 : "=a"(eax), "=b"(ebx), "=c"(ecx), "=d"(edx));
+                 : "=a"(eax), "=b"(ebx), "=c"(ecx), "=d"(edx)
+                 : "a" (op));
     unsigned long long res = ((unsigned long long)low) | (((unsigned long long)high) << 32);
     return tsc_barrier_cycles::time_point(tsc_barrier_cycles::duration(res));
 #else

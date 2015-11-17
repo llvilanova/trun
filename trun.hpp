@@ -240,9 +240,8 @@ namespace trun {
     // You can provide the 'func_*' arguments to gather additional statistics on
     // each batch. See above for their meaning. The timing results do not
     // include the calls to these functions.
-    template<class Clock = ::trun::time::default_clock,
-             bool show_info = false, bool show_debug = false,
-             class Func>
+    template<bool show_info = false, bool show_debug = false,
+             class Clock, class Func>
     static
     result<Clock> run(const parameters<Clock> & parameters, Func&& func,
                       func_iter_start_type && func_iter_start = NULL,

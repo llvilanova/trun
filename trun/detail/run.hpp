@@ -29,7 +29,7 @@
 
 namespace trun {
 
-    template<class C, bool show_info, bool show_debug, class F>
+    template<bool show_info, bool show_debug, class C, class F>
     static inline
     result<C> run(const parameters<C> & params, F&& func,
                   std::function<void(size_t, size_t, size_t)> && func_iter_start,

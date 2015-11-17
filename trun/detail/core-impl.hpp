@@ -266,7 +266,7 @@ void trun::detail::core::run(::trun::result<typename P::clock_type> & res, P & p
     size_t iterations = 0;
 
     trun::detail::debug<show_debug>(
-        "clock_overhead_perc=%f confidence_sigma=%f stddev_perc=%f"
+        "clock_overhead_perc=%f confidence_sigma=%f stddev_perc=%f "
         "warmup=%lu runs_size=%lu batch_size=%lu max_experiments=%lu",
         p.clock_overhead_perc, p.confidence_sigma, p.stddev_perc,
         p.warmup_batch_size, p.run_size, p.batch_size, p.max_experiments);
@@ -303,9 +303,9 @@ void trun::detail::core::run(::trun::result<typename P::clock_type> & res, P & p
         auto width = res_curr.mean.count() * stddev_ratio;
 
         trun::detail::debug<show_debug>(
-            "mean=%f sigma=%f width=%f run_size=%lu batch_size=%lu experiments=%lu",
+            "mean=%f sigma=%f width=%f run_size=%lu run_size_all=%lu batch_size=%lu experiments=%lu",
             res_curr.mean.count(), res_curr.sigma.count(), width,
-            p.run_size, p.batch_size, experiments);
+            res_curr.run_size, res_curr.run_size_all, p.batch_size, experiments);
 
         // update 'clock_time' if we're in calibration mode
         update_clock_time<calibrating>(p, res_curr.mean);
