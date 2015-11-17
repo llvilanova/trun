@@ -41,29 +41,22 @@ trun::result<Clock>::scale(unsigned long long factor) const
 
 
 template<class Clock>
-static inline
-constexpr bool
-is_cycles()
-{
-    return std::is_same<Clock, trun::time::tsc_cycles>::value
-        || std::is_same<Clock, trun::time::tsc_barrier_cycles>::value;
-}
-
-template<class Clock>
 template <class ClockTarget>
 inline
 trun::result<ClockTarget>
 trun::result<Clock>::convert() const
 {
     trun::result<ClockTarget> res;
-    if (is_cycles<Clock>() && !is_cycles<ClockTarget>()) {
+    if (std::is_same<Clock, trun::time::tsc_cycles>::value &&
+        !std::is_same<ClockTarget, trun::time::tsc_cycles>::value) {
         res.min = Clock::time(this->min);
         res.min_all = Clock::time(this->min_all);
         res.max = Clock::time(this->max);
         res.max_all = Clock::time(this->max_all);
         res.mean = Clock::time(this->mean);
         res.sigma = Clock::time(this->sigma);
-    } else if (!is_cycles<Clock>() && is_cycles<ClockTarget>()) {
+    } else if (!std::is_same<Clock, trun::time::tsc_cycles>::value &&
+               std::is_same<ClockTarget, trun::time::tsc_cycles>::value) {
         errx(1, "[trun] not implemented");
     } else {
         res.min = this->min;

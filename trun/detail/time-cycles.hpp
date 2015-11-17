@@ -56,8 +56,13 @@ trun::time::tsc_cycles::time_point
 trun::time::tsc_cycles::now()
 {
 #if (defined(__GNUC__) || defined(__ICC) || defined(__SUNPRO_C)) && defined(__x86_64__)
-    unsigned high, low;
-    asm volatile("rdtsc" : "=a" (low), "=d" (high));
+    unsigned int op, eax, ebx, ecx, edx;
+    unsigned high, low, signature;
+    asm volatile("rdtscp" : "=a" (low), "=d" (high), "=c"(signature));
+    op = 0;
+    asm volatile("cpuid"
+                 : "=a"(eax), "=b"(ebx), "=c"(ecx), "=d"(edx)
+                 : "a" (op));
     unsigned long long res = ((unsigned long long)low) | (((unsigned long long)high) << 32);
     return tsc_cycles::time_point(tsc_cycles::duration(res));
 #else
@@ -144,109 +149,6 @@ namespace trun {
                 units += "cycles";
             }
             return units;
-        }
-
-    }
-}
-
-
-//////////////////////////////////////////////////
-// tsc_barrier_cycles
-
-inline
-void
-trun::time::tsc_barrier_cycles::check()
-{
-#if (defined(__GNUC__) || defined(__ICC) || defined(__SUNPRO_C)) && defined(__x86_64__)
-    // ensure the counter is invariant (constant frequency)
-    unsigned int op, eax, ebx, ecx, edx;
-    op = 0x80000007;
-    asm volatile("cpuid"
-                 : "=a"(eax), "=b"(ebx), "=c"(ecx), "=d"(edx)
-                 : "a" (op));
-    auto tsc_invariant = edx & (1<<8);
-    if (!tsc_invariant) {
-        errx(1, "[trun] trun::time::tsc_barrier_cycles does not have a constant frequency");
-    }
-#else
-#if !defined(NWARN_TSC_BARRIER_CYCLES)
-#warning trun::time::tsc_barrier_cycles not supported (define NWARN_TSC_BARRIER_CYCLES to disable)
-#endif
-    errx(1, "[trun] trun::time::tsc_barrier_cycles not supported");
-#endif
-}
-
-inline
-trun::time::tsc_barrier_cycles::time_point
-trun::time::tsc_barrier_cycles::now()
-{
-#if (defined(__GNUC__) || defined(__ICC) || defined(__SUNPRO_C)) && defined(__x86_64__)
-    unsigned int op, eax, ebx, ecx, edx;
-    unsigned high, low, signature;
-    asm volatile("rdtscp" : "=a" (low), "=d" (high), "=c"(signature));
-    op = 0;
-    asm volatile("cpuid"
-                 : "=a"(eax), "=b"(ebx), "=c"(ecx), "=d"(edx)
-                 : "a" (op));
-    unsigned long long res = ((unsigned long long)low) | (((unsigned long long)high) << 32);
-    return tsc_barrier_cycles::time_point(tsc_barrier_cycles::duration(res));
-#else
-    errx(1, "[trun] trun::time::tsc_barrier_cycles not supported in this system");
-#endif
-}
-
-inline
-unsigned long long
-trun::time::tsc_barrier_cycles::frequency()
-{
-    static unsigned long long f = 0;
-    if (f == 0) {
-        auto t1 = now();
-        sleep(2);
-        auto t2 = now();
-        f = (t2 - t1).count() / 2;
-    }
-    return f;
-}
-
-inline
-std::chrono::duration<double, std::pico>
-trun::time::tsc_barrier_cycles::cycle_time()
-{
-    auto f = frequency();
-    return std::chrono::duration<double, std::ratio<1>>(1.0/f);
-}
-
-template<class Rep, class Period>
-inline
-std::chrono::duration<double, std::pico>
-trun::time::tsc_barrier_cycles::time(const std::chrono::duration<Rep, Period> &d)
-{
-    auto unit = std::chrono::duration< double, std::ratio<1> >(d);
-    auto t = unit / trun::time::tsc_barrier_cycles::frequency();
-    return std::chrono::duration<double, std::nano>(t);
-}
-
-namespace trun {
-    namespace time {
-
-        namespace detail {
-
-            static inline
-            void
-            check(const ::trun::time::tsc_barrier_cycles &clock)
-            {
-                clock.check();
-            }
-
-        }
-
-        template<class Ratio>
-        static inline
-        std::string
-        units(const ::trun::time::tsc_barrier_cycles &clock)
-        {
-            return units<Ratio>(::trun::time::tsc_cycles());
         }
 
     }

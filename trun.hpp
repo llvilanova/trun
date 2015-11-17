@@ -158,34 +158,16 @@ namespace trun {
             using duration = std::chrono::duration<rep, period>;
             using time_point = std::chrono::time_point<tsc_cycles>;
 
-            // Check if this is usable.
-            static void check();
             // Get timestamp.
             static time_point now();
+
+            // Check if the TSC is usable.
+            static void check();
             // Get TSC frequency (approximated).
             static unsigned long long frequency();
             // Get cycle time.
             static std::chrono::duration<double, std::pico> cycle_time();
             // Translate number of cycles into time.
-            template<class Rep, class Period>
-            static std::chrono::duration<double, std::pico> time(
-                const std::chrono::duration<Rep, Period> &d);
-        };
-
-        // Count processor cycles.
-        //
-        // Ensures instructions
-        class tsc_barrier_cycles {
-        public:
-            using rep = unsigned long long;
-            using period = std::ratio<1>;
-            using duration = std::chrono::duration<rep, period>;
-            using time_point = std::chrono::time_point<tsc_barrier_cycles>;
-
-            static time_point now();
-            static void check();
-            static unsigned long long frequency();
-            static std::chrono::duration<double, std::pico> cycle_time();
             template<class Rep, class Period>
             static std::chrono::duration<double, std::pico> time(
                 const std::chrono::duration<Rep, Period> &d);
