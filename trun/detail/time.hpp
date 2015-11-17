@@ -29,8 +29,8 @@ namespace trun {
 
         namespace detail {
 
-            template<class C>
-            void check()
+            template<class Clock>
+            void check(const Clock &clock)
             {
             }
 
@@ -45,7 +45,7 @@ namespace trun {
         template<class C, bool show_info, bool show_debug>
         parameters<C> calibrate(const parameters<C> & params)
         {
-            detail::check<C>();
+            detail::check(C());
 
             // initialize parameters
             parameters<C> res_params = params;
@@ -116,5 +116,7 @@ namespace trun {
 
     }
 }
+
+#include <trun/detail/time-cycles.hpp>
 
 #endif // TRUN__DETAIL__TIME_HPP
