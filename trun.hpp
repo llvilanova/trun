@@ -177,6 +177,17 @@ namespace trun {
                 const std::chrono::duration<Rep, Period> &d);
         };
 
+        // Use the TSC to count time.
+        class tsc_clock {
+        public:
+            using rep = unsigned long long;
+            using period = std::pico;
+            using duration = std::chrono::duration<rep, period>;
+            using time_point = std::chrono::time_point<tsc_clock>;
+
+            static time_point now();
+        };
+
     }
 
     // Signal start/stop of an interation (outermost loop: all runs + batches)

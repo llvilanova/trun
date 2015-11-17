@@ -156,4 +156,34 @@ namespace trun {
     }
 }
 
+
+//////////////////////////////////////////////////
+// tsc_clock
+
+inline
+trun::time::tsc_clock::time_point
+trun::time::tsc_clock::now()
+{
+    auto now = tsc_cycles::now();
+    auto dur = now - tsc_cycles::time_point(tsc_cycles::duration(0));
+    auto t = tsc_cycles::time(dur);
+    auto tdur = std::chrono::duration_cast<tsc_clock::duration>(t);
+    return tsc_clock::time_point(tdur);
+}
+
+namespace trun {
+    namespace time {
+        namespace detail {
+
+            static inline
+            void
+            check(const ::trun::time::tsc_clock &clock)
+            {
+                tsc_cycles::check();
+            }
+
+        }
+    }
+}
+
 #endif // TRUN__DETAIL__TIME_CYCLES_HPP

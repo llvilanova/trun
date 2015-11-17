@@ -39,15 +39,33 @@ namespace trun {
                   std::function<void(size_t, size_t, size_t)> && func_batch_select,
                   std::function<void(size_t, size_t, size_t)> && func_iter_select)
     {
-        result<C> res;
-        parameters<C> run_params = params;
-        if (params.clock_time.count() == 0) {
-            run_params = time::calibrate<C, show_info, show_debug>(params);
-        }
+        bool need_calibrate = params.clock_time.count() == 0;
 
-        detail::parameters::check(run_params);
-        detail::info<show_info>("Executing benchmark...");
-        trun::detail::core::run<false, show_info, show_debug>(
+        if (std::is_same<C, ::trun::time::tsc_clock>::value) {
+          // Use raw TSC cycles, and only convert to time at the end
+          // parameters<::trun::time::tsc_cycles> params_2 = params.convert<::trun::time::tsc_cycles>();
+          parameters<::trun::time::tsc_cycles> params_2 =
+            params.template convert<::trun::time::tsc_cycles>();
+          auto res = run(params_2, std::forward<F>(func),
+                         std::forward<decltype(func_iter_start)>(func_iter_start),
+                         std::forward<decltype(func_batch_start)>(func_batch_start),
+                         std::forward<decltype(func_batch_stop)>(func_batch_stop),
+                         std::forward<decltype(func_iter_stop)>(func_iter_stop),
+                         std::forward<decltype(func_batch_select)>(func_batch_select),
+                         std::forward<decltype(func_iter_select)>(func_iter_select));
+          return res.template convert<C>();
+
+        } else {
+          result<C> res;
+          parameters<C> run_params = params;
+          if (params.clock_time.count() == 0) {
+            run_params = time::calibrate<C, show_info, show_debug>(params);
+          }
+
+          ::trun::time::detail::check(C());
+          detail::parameters::check(run_params);
+          detail::info<show_info>("Executing benchmark...");
+          trun::detail::core::run<false, show_info, show_debug>(
             res, run_params, std::forward<F>(func),
             std::forward<decltype(func_iter_start)>(func_iter_start),
             std::forward<decltype(func_batch_start)>(func_batch_start),
@@ -56,7 +74,8 @@ namespace trun {
             std::forward<decltype(func_batch_select)>(func_batch_select),
             std::forward<decltype(func_iter_select)>(func_iter_select));
 
-        return res;
+          return res;
+        }
     }
 
     template<class C, bool show_info, bool show_debug, class F>

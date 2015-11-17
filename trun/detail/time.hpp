@@ -41,8 +41,6 @@ namespace trun {
         static inline
         parameters<C> calibrate(const parameters<C> & params)
         {
-            detail::check(C());
-
             // initialize parameters
             parameters<C> res_params = params;
             res_params.clock_time = typename C::duration(typename C::rep(0));
