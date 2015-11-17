@@ -43,6 +43,8 @@ trun::time::tsc_cycles::check()
     if (!tsc_invariant) {
         errx(1, "[trun] trun::time::tsc_cycles does not have a constant frequency");
     }
+    // calculate frequency once
+    auto __unused(f) = trun::time::tsc_cycles::frequency();
 #else
 #if !defined(NWARN_TSC_BARRIER_CYCLES)
 #warning trun::time::tsc_cycles not supported (define NWARN_TSC_BARRIER_CYCLES to disable)
