@@ -43,7 +43,7 @@ namespace trun {
                  bool show_header, bool force_converged)
         {
             if (force_converged && !results.converged) {
-                errx(1, "[trun] Results did not converge (tried %d runs on batches of %d)",
+                errx(1, "[trun] Results did not converge (tried %lu runs on batches of %lu)",
                      results.run_size_all, results.batch_size);
             }
 
@@ -73,7 +73,7 @@ namespace trun {
                         bool show_header, bool force_converged)
         {
             if (force_converged && !results.converged) {
-                errx(1, "[trun] Results did not converge (tried %d runs on batches of %d)",
+                errx(1, "[trun] Results did not converge (tried %lu runs on batches of %lu)",
                      results.run_size_all, results.batch_size);
             }
 

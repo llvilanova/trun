@@ -39,8 +39,6 @@ namespace trun {
                   std::function<void(size_t, size_t, size_t)> && func_batch_select,
                   std::function<void(size_t, size_t, size_t)> && func_iter_select)
     {
-        bool need_calibrate = params.clock_time.count() == 0;
-
         if (std::is_same<C, ::trun::time::tsc_clock>::value) {
           // Use raw TSC cycles, and only convert to time at the end
           // parameters<::trun::time::tsc_cycles> params_2 = params.convert<::trun::time::tsc_cycles>();
@@ -89,7 +87,7 @@ namespace trun {
                   std::function<void(size_t, size_t, size_t)> && func_iter_select)
     {
         auto params = time::calibrate<C, show_info, show_debug>();
-        return run<C, show_info, show_debug>(
+        return run<show_info, show_debug>(
             std::forward<parameters<C>>(params),
             std::forward<F>(func),
             std::forward<decltype(func_iter_start)>(func_iter_start),

@@ -107,6 +107,7 @@ namespace trun {
             } else if (std::ratio_equal<std::ratio<60*60*24>, Ratio>::value) {
                 units = "days";
             }
+            return units;
         }
 
     }

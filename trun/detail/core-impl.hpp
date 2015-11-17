@@ -364,7 +364,6 @@ void trun::detail::core::run(::trun::result<typename P::clock_type> & res, P & p
 
         // calculate new population size
         {
-            auto old_run_size = p.run_size;
             auto max_run_size = p.run_size * max_run_size_multiplier;
             auto min_run_size = p.run_size / max_run_size_multiplier;
             auto new_run_size = pow((2 * p.confidence_sigma * res_curr.sigma.count()) / width, 2);
