@@ -74,4 +74,37 @@ trun::parameters<C>::parameters()
 {
 }
 
+template<class Clock>
+template <class ClockTarget>
+inline
+trun::parameters<ClockTarget>
+trun::parameters<Clock>::convert() const
+{
+    using tsc_cycles = ::trun::time::tsc_cycles;
+    trun::parameters<ClockTarget> res;
+    if (std::is_same<Clock, tsc_cycles>::value &&
+        !std::is_same<ClockTarget, tsc_cycles>::value) {
+        res.clock_time = tsc_cycles::time(this->clock_time);
+    } else if (!std::is_same<Clock, tsc_cycles>::value &&
+               std::is_same<ClockTarget, tsc_cycles>::value) {
+        auto d = std::chrono::duration_cast<
+            std::chrono::duration<typename Clock::rep, std::ratio<1>>
+            >(this->clock_time);
+        d *= tsc_cycles::frequency();
+        res.clock_time = typename ClockTarget::duration(d.count());
+    } else {
+        res.clock_time = this->clock_time;
+    }
+
+    res.clock_overhead_perc = this->clock_overhead_perc;
+    res.confidence_sigma = this->confidence_sigma;
+    res.confidence_outlier_sigma = this->confidence_outlier_sigma;
+    res.stddev_perc = this->stddev_perc;
+    res.warmup_batch_size = this->warmup_batch_size;
+    res.run_size = this->run_size;
+    res.batch_size = this->batch_size;
+    res.max_experiments = this->max_experiments;
+    return res;
+}
+
 #endif // TRUN__DETAIL__PARAMETERS_HPP

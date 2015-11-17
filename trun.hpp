@@ -53,8 +53,8 @@ namespace trun {
 
         // Scale this results down (divide) by the given factor.
         //
-        // Useful when the benchmarked function actually contains a tight loop
-        // measuring the actual target.
+        // Useful when the benchmarked function actually contains multiple
+        // instances of the experiment (e.g., an unrolled loop).
         result<Clock> scale(unsigned long long factor) const;
 
         // Return new results with units converted according to #ClockTarget.
@@ -118,6 +118,10 @@ namespace trun {
         size_t run_size;
         size_t batch_size;
         size_t max_experiments;
+
+        // Return new parameters with units converted according to #ClockTarget.
+        template<class ClockTarget>
+        parameters<ClockTarget> convert() const;
     };
 
 
