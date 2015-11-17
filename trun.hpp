@@ -93,7 +93,8 @@ namespace trun {
     //     (default: TRUN_WARMUP_BATCH_SIZE)
     // @run_size: initial number of runs
     //     (default: TRUN_RUN_SIZE)
-    //     Statistics are calculated across runs.
+    //     Statistics are calculated across runs. Experiments with less than
+    //     this number of non-outlier results will be discarded.
     // @batch_size: initial number of iterations to batch together
     //     (default: TRUN_BATCH_SIZE)
     //     Every batch is timed separately to reduce clock overheads.

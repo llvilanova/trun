@@ -305,7 +305,12 @@ void trun::detail::core::run(::trun::result<typename P::clock_type> & res, P & p
         trun::detail::debug<show_debug>(
             "mean=%f sigma=%f width=%f run_size=%lu run_size_all=%lu batch_size=%lu experiments=%lu",
             res_curr.mean.count(), res_curr.sigma.count(), width,
-            res_curr.run_size, res_curr.run_size_all, p.batch_size, experiments);
+            res_curr.run_size, res_curr.run_size_all, res_curr.batch_size, experiments);
+
+        // discard populations without statistical significance
+        if (res_curr.run_size < params.run_size) {
+            continue;
+        }
 
         // update 'clock_time' if we're in calibration mode
         update_clock_time<calibrating>(p, res_curr.mean);
@@ -370,14 +375,9 @@ void trun::detail::core::run(::trun::result<typename P::clock_type> & res, P & p
             } else if (new_run_size > p.run_size){
                 p.run_size = std::ceil(new_run_size);
             }
-            if (old_run_size >= TRUN_RUN_SIZE && p.run_size < TRUN_RUN_SIZE) {
-                p.run_size = TRUN_RUN_SIZE;
+            if (p.run_size < params.run_size) {
+                p.run_size = params.run_size;
             }
-        }
-
-        // check if results are significant
-        if (res_curr.run_size < TRUN_RUN_SIZE && res_curr.run_size < p.run_size) {
-            continue;
         }
 
         res_prev = res_curr;
