@@ -69,7 +69,7 @@ namespace trun {
                   std::function<void(size_t, size_t, size_t)> && func_batch_select,
                   std::function<void(size_t, size_t, size_t)> && func_iter_select)
     {
-        auto params = time::calibrate<C>();
+        auto params = time::calibrate<C, show_info, show_debug>();
         return run<C, show_info, show_debug>(
             std::forward<parameters<C>>(params),
             std::forward<F>(func),

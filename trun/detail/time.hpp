@@ -82,7 +82,7 @@ namespace trun {
             clock_params.warmup_batch_size = 1000;
             clock_params.batch_size = 10000;
             clock_params.max_experiments = 1000000000;
-            clock_params = calibrate(clock_params);
+            clock_params = calibrate<C, show_info, show_debug>(clock_params);
 
             res_params.clock_time = clock_params.clock_time;
             return std::move(res_params);
