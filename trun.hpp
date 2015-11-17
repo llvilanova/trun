@@ -109,6 +109,8 @@ namespace trun {
         size_t max_experiments;
     };
 
+
+    // Manage time.
     namespace time {
 
         // Calibrate clock overheads.
@@ -247,6 +249,8 @@ namespace trun {
                       func_batch_select_type && func_batch_select_stop = NULL,
                       func_iter_select_type && func_iter_select_stop = NULL);
 
+
+    // Dump results.
     namespace dump {
 
         // Helper to get an output stream from a path to a file
@@ -258,14 +262,14 @@ namespace trun {
         // @output: output stream
         // @show_header: whether to dump the CSV header
         // @force_converged: fail if results are not converged
-        template<class Ratio = std::nano, class Clock>
+        template<class Ratio = std::ratio<1>, class Clock>
         void csv(const result<Clock> &results,
                  std::ostream &output = std::cout,
                  bool show_header = true,
                  bool force_converged = true);
 
         // Dump CSV header
-        template<class Ratio = std::nano, class Clock>
+        template<class Ratio = std::ratio<1>, class Clock>
         void csv_header(const result<Clock> &results,
                         std::ostream &output = std::cout,
                         bool show_header = true,
