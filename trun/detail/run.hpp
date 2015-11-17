@@ -56,8 +56,6 @@ namespace trun {
             std::forward<decltype(func_batch_select)>(func_batch_select),
             std::forward<decltype(func_iter_select)>(func_iter_select));
 
-        res.mean = time::detail::clock_units<C>(res.mean);
-        res.sigma = time::detail::clock_units<C>(res.sigma);
         return res;
     }
 

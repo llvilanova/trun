@@ -35,13 +35,6 @@ namespace trun {
             {
             }
 
-            template<class C>
-            static inline
-            typename result<C>::duration clock_units(const typename result<C>::duration & time)
-            {
-                return time;
-            }
-
         }
 
         template<class C, bool show_info, bool show_debug>
