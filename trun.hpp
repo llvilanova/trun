@@ -50,6 +50,16 @@ namespace trun {
         size_t run_size, run_size_all;
         size_t batch_size;
         bool converged;
+
+        // Scale this results down (divide) by the given factor.
+        //
+        // Useful when the benchmarked function actually contains a tight loop
+        // measuring the actual target.
+        result<Clock> scale(unsigned long long factor) const;
+
+        // Return new results with units converted according to #ClockTarget.
+        template<class ClockTarget>
+        result<ClockTarget> convert() const;
     };
 
 #define TRUN_CLOCK_OVERHEAD_PERC 0.1    // 0.1% timing overhead
@@ -286,6 +296,7 @@ namespace trun {
     }
 }
 
+#include <trun/detail/result.hpp>
 #include <trun/detail/run.hpp>
 #include <trun/detail/dump.hpp>
 
