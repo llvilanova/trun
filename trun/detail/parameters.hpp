@@ -28,6 +28,7 @@ namespace trun {
         namespace parameters {
 
             template<class P>
+            static inline
             void check(const P & params)
             {
 #define _TRUN_PARAM_CHECK(p, eq)                                        \
@@ -59,6 +60,7 @@ namespace trun {
 }
 
 template<class C>
+inline
 trun::parameters<C>::parameters()
     :clock_time(0)
     ,clock_overhead_perc(TRUN_CLOCK_OVERHEAD_PERC)

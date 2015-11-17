@@ -30,11 +30,13 @@ namespace trun {
         namespace detail {
 
             template<class Clock>
+            static inline
             void check(const Clock &clock)
             {
             }
 
             template<class C>
+            static inline
             typename result<C>::duration clock_units(const typename result<C>::duration & time)
             {
                 return time;
@@ -43,6 +45,7 @@ namespace trun {
         }
 
         template<class C, bool show_info, bool show_debug>
+        static inline
         parameters<C> calibrate(const parameters<C> & params)
         {
             detail::check(C());
@@ -73,6 +76,7 @@ namespace trun {
         }
 
         template<class C, bool show_info, bool show_debug>
+        static inline
         parameters<C> calibrate()
         {
             parameters<C> res_params;

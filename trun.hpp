@@ -113,16 +113,20 @@ namespace trun {
     // Manage time.
     namespace time {
 
+        using default_clock = std::chrono::steady_clock;
+
         // Calibrate clock overheads.
         //
         // Uses slightly better parameters than the default ones.
-        template<class Clock = std::chrono::steady_clock,
+        template<class Clock = default_clock,
                  bool show_info = false, bool show_debug = false>
+        static
         parameters<Clock> calibrate();
 
         // Calibrate clock overheads.
         template<class Clock,
                  bool show_info = false, bool show_debug = false>
+        static
         parameters<Clock> calibrate(const trun::parameters<Clock> & parameters);
 
         // Get the units name for a given clock and ratio.
@@ -132,7 +136,7 @@ namespace trun {
         //    units<std::milli>(std::chrono::steady_clock()) == "ms"
         //    units<std::ratio<60>>(std::chrono::steady_clock()) == "min"
         template<class Clock, class Ratio>
-        static inline
+        static
         std::string units(const Clock &clock);
 
         // Count processor cycles.
@@ -226,9 +230,10 @@ namespace trun {
     // You can provide the 'func_*' arguments to gather additional statistics on
     // each batch. See above for their meaning. The timing results do not
     // include the calls to these functions.
-    template<class Clock = std::chrono::steady_clock,
+    template<class Clock = ::trun::time::default_clock,
              bool show_info = false, bool show_debug = false,
              class Func>
+    static
     result<Clock> run(const parameters<Clock> & parameters, Func&& func,
                       func_iter_start_type && func_iter_start = NULL,
                       func_batch_start_type && func_batch_start = NULL,
@@ -238,9 +243,10 @@ namespace trun {
                       func_iter_select_type && func_iter_select_stop = NULL);
 
     // Same with default parameters
-    template<class Clock = std::chrono::steady_clock,
+    template<class Clock = ::trun::time::default_clock,
              bool show_info = false, bool show_debug = false,
              class Func>
+    static
     result<Clock> run(Func&& func,
                       func_iter_start_type && func_iter_start = NULL,
                       func_batch_start_type && func_batch_start = NULL,
@@ -254,7 +260,7 @@ namespace trun {
     namespace dump {
 
         // Helper to get an output stream from a path to a file
-        std::ofstream stream(const std::string & output);
+        static std::ofstream stream(const std::string & output);
 
         // Dump results using comma-separate value (CSV) format
         //
@@ -263,6 +269,7 @@ namespace trun {
         // @show_header: whether to dump the CSV header
         // @force_converged: fail if results are not converged
         template<class Ratio = std::ratio<1>, class Clock>
+        static
         void csv(const result<Clock> &results,
                  std::ostream &output = std::cout,
                  bool show_header = true,
@@ -270,6 +277,7 @@ namespace trun {
 
         // Dump CSV header
         template<class Ratio = std::ratio<1>, class Clock>
+        static
         void csv_header(const result<Clock> &results,
                         std::ostream &output = std::cout,
                         bool show_header = true,

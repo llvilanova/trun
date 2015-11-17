@@ -89,7 +89,7 @@ trun::time::tsc_cycles::cycle_time()
 
 template<class Rep, class Period>
 inline
-std::chrono::duration<double, std::nano>
+std::chrono::duration<double, std::pico>
 trun::time::tsc_cycles::time(const std::chrono::duration<Rep, Period> &d)
 {
     auto unit = std::chrono::duration< double, std::ratio<1> >(d);
@@ -102,7 +102,9 @@ namespace trun {
 
         namespace detail {
 
-            void check(const ::trun::time::tsc_cycles &clock)
+            static inline
+            void
+            check(const ::trun::time::tsc_cycles &clock)
             {
                 clock.check();
             }
@@ -215,7 +217,7 @@ trun::time::tsc_barrier_cycles::cycle_time()
 
 template<class Rep, class Period>
 inline
-std::chrono::duration<double, std::nano>
+std::chrono::duration<double, std::pico>
 trun::time::tsc_barrier_cycles::time(const std::chrono::duration<Rep, Period> &d)
 {
     auto unit = std::chrono::duration< double, std::ratio<1> >(d);
@@ -228,7 +230,9 @@ namespace trun {
 
         namespace detail {
 
-            void check(const ::trun::time::tsc_barrier_cycles &clock)
+            static inline
+            void
+            check(const ::trun::time::tsc_barrier_cycles &clock)
             {
                 clock.check();
             }

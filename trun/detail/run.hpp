@@ -30,6 +30,7 @@
 namespace trun {
 
     template<class C, bool show_info, bool show_debug, class F>
+    static inline
     result<C> run(const parameters<C> & params, F&& func,
                   std::function<void(size_t, size_t, size_t)> && func_iter_start,
                   std::function<void(size_t, size_t, size_t)> && func_batch_start,
@@ -61,6 +62,7 @@ namespace trun {
     }
 
     template<class C, bool show_info, bool show_debug, class F>
+    static inline
     result<C> run(F&& func,
                   std::function<void(size_t, size_t, size_t)> && func_iter_start,
                   std::function<void(size_t, size_t, size_t)> && func_batch_start,
