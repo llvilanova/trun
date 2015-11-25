@@ -30,13 +30,6 @@
 namespace trun {
     namespace dump {
 
-        static inline
-        std::ofstream
-        stream(const std::string &output)
-        {
-            return std::ofstream(output, std::ios::out);
-        }
-
         template<class Ratio = std::nano, class Clock>
         static inline
         void csv(const result<Clock> &results, std::ostream & output,

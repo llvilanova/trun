@@ -266,15 +266,16 @@ namespace trun {
     // Dump results.
     namespace dump {
 
-        // Helper to get an output stream from a path to a file
-        static std::ofstream stream(const std::string & output);
-
         // Dump results using comma-separate value (CSV) format
         //
         // @results: the results to dump
         // @output: output stream
         // @show_header: whether to dump the CSV header
         // @force_converged: fail if results are not converged
+        //
+        // You can easily dump results onto a file:
+        //     std::ofstream output("/some/path", std::ios::out);
+        //     trun::dump::csv(results, output);
         template<class Ratio = std::ratio<1>, class Clock>
         static
         void csv(const result<Clock> &results,
