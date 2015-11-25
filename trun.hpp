@@ -246,8 +246,8 @@ namespace trun {
                       func_batch_start_type && func_batch_start = NULL,
                       func_batch_stop_type && func_batch_stop = NULL,
                       func_iter_stop_type && func_iter_stop = NULL,
-                      func_batch_select_type && func_batch_select_stop = NULL,
-                      func_iter_select_type && func_iter_select_stop = NULL);
+                      func_batch_select_type && func_batch_select = NULL,
+                      func_iter_select_type && func_iter_select = NULL);
 
     // Same with default parameters
     template<class Clock = ::trun::time::default_clock,
@@ -259,8 +259,8 @@ namespace trun {
                       func_batch_start_type && func_batch_start = NULL,
                       func_batch_stop_type && func_batch_stop = NULL,
                       func_iter_stop_type && func_iter_stop = NULL,
-                      func_batch_select_type && func_batch_select_stop = NULL,
-                      func_iter_select_type && func_iter_select_stop = NULL);
+                      func_batch_select_type && func_batch_select = NULL,
+                      func_iter_select_type && func_iter_select = NULL);
 
 
     // Dump results.
