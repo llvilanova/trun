@@ -49,12 +49,12 @@ trun::result<Clock>::convert() const
     trun::result<ClockTarget> res;
     if (std::is_same<Clock, trun::time::tsc_cycles>::value &&
         !std::is_same<ClockTarget, trun::time::tsc_cycles>::value) {
-        res.min = Clock::time(this->min);
-        res.min_all = Clock::time(this->min_all);
-        res.max = Clock::time(this->max);
-        res.max_all = Clock::time(this->max_all);
-        res.mean = Clock::time(this->mean);
-        res.sigma = Clock::time(this->sigma);
+        res.min = trun::time::tsc_cycles::time(this->min);
+        res.min_all = trun::time::tsc_cycles::time(this->min_all);
+        res.max = trun::time::tsc_cycles::time(this->max);
+        res.max_all = trun::time::tsc_cycles::time(this->max_all);
+        res.mean = trun::time::tsc_cycles::time(this->mean);
+        res.sigma = trun::time::tsc_cycles::time(this->sigma);
     } else if (!std::is_same<Clock, trun::time::tsc_cycles>::value &&
                std::is_same<ClockTarget, trun::time::tsc_cycles>::value) {
         errx(1, "[trun] not implemented");
