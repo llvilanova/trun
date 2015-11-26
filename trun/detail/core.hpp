@@ -25,15 +25,10 @@ namespace trun {
     namespace detail {
         namespace core {
 
-            template<bool calibrating, bool show_info, bool show_debug, class P, class F>
+            template<bool calibrating, bool show_info, bool show_debug, class P,
+                     class F, class... Fcb>
             static inline
-            void run(result<typename P::clock_type> & res, P & params, F&& func,
-                     std::function<void(size_t, size_t, size_t)> && func_iter_start,
-                     std::function<void(size_t, size_t, size_t)> && func_batch_start,
-                     std::function<void(size_t, size_t, size_t)> && func_batch_stop,
-                     std::function<void(size_t, size_t, size_t)> && func_iter_stop,
-                     std::function<void(size_t, size_t, size_t)> && func_batch_select,
-                     std::function<void(size_t, size_t, size_t)> && func_iter_select);
+            void run(result<typename P::clock_type> & res, P & params, F&& func, Fcb&&... func_cbs);
 
         }
     }

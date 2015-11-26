@@ -54,9 +54,7 @@ namespace trun {
                 (void)t2;
             };
             result<C> res;
-            trun::detail::core::run<true, show_info, show_debug>(
-                res, params, time,
-                NULL, NULL, NULL, NULL, NULL, NULL);
+            trun::detail::core::run<true, show_info, show_debug>(res, params, time);
             if (!res.converged) {
                 errx(1, "[trun] clock calibration did not converge");
             }

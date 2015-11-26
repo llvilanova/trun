@@ -29,28 +29,18 @@
 
 namespace trun {
 
-    template<bool show_info, bool show_debug, class C, class F>
+    template<bool show_info, bool show_debug, class C, class F, class... Fcb>
     static inline
-    result<C> run(const parameters<C> & params, F&& func,
-                  std::function<void(size_t, size_t, size_t)> && func_iter_start,
-                  std::function<void(size_t, size_t, size_t)> && func_batch_start,
-                  std::function<void(size_t, size_t, size_t)> && func_batch_stop,
-                  std::function<void(size_t, size_t, size_t)> && func_iter_stop,
-                  std::function<void(size_t, size_t, size_t)> && func_batch_select,
-                  std::function<void(size_t, size_t, size_t)> && func_iter_select)
+    typename std::enable_if<(sizeof...(Fcb) == 0 || sizeof...(Fcb) == 6),
+                            result<C>>::type
+    run(const parameters<C> & params, F&& func, Fcb&&... func_cbs)
     {
         if (std::is_same<C, ::trun::time::tsc_clock>::value) {
           // Use raw TSC cycles, and only convert to time at the end
           // parameters<::trun::time::tsc_cycles> params_2 = params.convert<::trun::time::tsc_cycles>();
           parameters<::trun::time::tsc_cycles> params_2 =
             params.template convert<::trun::time::tsc_cycles>();
-          auto res = run(params_2, std::forward<F>(func),
-                         std::forward<decltype(func_iter_start)>(func_iter_start),
-                         std::forward<decltype(func_batch_start)>(func_batch_start),
-                         std::forward<decltype(func_batch_stop)>(func_batch_stop),
-                         std::forward<decltype(func_iter_stop)>(func_iter_stop),
-                         std::forward<decltype(func_batch_select)>(func_batch_select),
-                         std::forward<decltype(func_iter_select)>(func_iter_select));
+          auto res = run(params_2, std::forward<F>(func), std::forward<Fcb>(func_cbs)...);
           return res.template convert<C>();
 
         } else {
@@ -64,38 +54,23 @@ namespace trun {
           detail::parameters::check(run_params);
           detail::info<show_info>("Executing benchmark...");
           trun::detail::core::run<false, show_info, show_debug>(
-            res, run_params, std::forward<F>(func),
-            std::forward<decltype(func_iter_start)>(func_iter_start),
-            std::forward<decltype(func_batch_start)>(func_batch_start),
-            std::forward<decltype(func_batch_stop)>(func_batch_stop),
-            std::forward<decltype(func_iter_stop)>(func_iter_stop),
-            std::forward<decltype(func_batch_select)>(func_batch_select),
-            std::forward<decltype(func_iter_select)>(func_iter_select));
+            res, run_params, std::forward<F>(func), std::forward<Fcb>(func_cbs)...);
 
           return res;
         }
     }
 
-    template<class C, bool show_info, bool show_debug, class F>
+    template<class C, bool show_info, bool show_debug, class F, class... Fcb>
     static inline
-    result<C> run(F&& func,
-                  std::function<void(size_t, size_t, size_t)> && func_iter_start,
-                  std::function<void(size_t, size_t, size_t)> && func_batch_start,
-                  std::function<void(size_t, size_t, size_t)> && func_batch_stop,
-                  std::function<void(size_t, size_t, size_t)> && func_iter_stop,
-                  std::function<void(size_t, size_t, size_t)> && func_batch_select,
-                  std::function<void(size_t, size_t, size_t)> && func_iter_select)
+    typename std::enable_if<(sizeof...(Fcb) == 0 || sizeof...(Fcb) == 6),
+                            result<C>>::type
+    run(F&& func, Fcb&&... func_cbs)
     {
         auto params = time::calibrate<C, show_info, show_debug>();
         return run<show_info, show_debug>(
             std::forward<parameters<C>>(params),
             std::forward<F>(func),
-            std::forward<decltype(func_iter_start)>(func_iter_start),
-            std::forward<decltype(func_batch_start)>(func_batch_start),
-            std::forward<decltype(func_batch_stop)>(func_batch_stop),
-            std::forward<decltype(func_iter_stop)>(func_iter_stop),
-            std::forward<decltype(func_batch_select)>(func_batch_select),
-            std::forward<decltype(func_iter_select)>(func_iter_select));
+            std::forward<Fcb>(func_cbs)...);
     }
 
 }

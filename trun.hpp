@@ -190,24 +190,6 @@ namespace trun {
 
     }
 
-    // Signal start/stop of an interation (outermost loop: all runs + batches)
-    using func_iter_start_type = std::function<void(size_t iter, size_t run_size, size_t batch_size)>;
-    using func_iter_stop_type  = std::function<void(size_t iter, size_t run_size, size_t batch_size)>;
-
-    // Signal start/stop of a run (one batch)
-    using func_batch_start_type = std::function<void(size_t iter, size_t run, size_t batch_size)>;
-    using func_batch_stop_type  = std::function<void(size_t iter, size_t run, size_t batch_size)>;
-
-    // Signal selection of a batch as a non-outlier
-    using func_batch_select_type  = std::function<void(size_t iter, size_t run, size_t batch_size)>;
-
-    // Signal selection of an iteration as candidate for final result.
-    //
-    // The last iteration selected corresponds to the final results.
-    //
-    // Argument #run_size does not include outliers.
-    using func_iter_select_type  = std::function<void(size_t iter, size_t run_size, size_t batch_size)>;
-
     // Time the experiment 'func()'.
     //
     // You can use a functor or a lambda to invoke functions with arguments:
@@ -238,29 +220,38 @@ namespace trun {
     // You can provide the 'func_*' arguments to gather additional statistics on
     // each batch. See above for their meaning. The timing results do not
     // include the calls to these functions.
+    //
+    // This function accepts 6 optional callbacks (all arguments are size_t):
+    //
+    // - (0) func_iter_start  (iter, run_size, batch_size)
+    // - (1) func_batch_start (iter, run     , batch_size)
+    // - (2) func_batch_stop  (iter, run     , batch_size)
+    // - (3) func_iter_stop   (iter, run_size, batch_size)
+    // - (4) func_batch_select(iter, run     , batch_size)
+    // - (5) func_iter_select (iter, run_size, batch_size)
+    //
+    // - 0,3: Signal start/stop of an iteration (outermost loop: all runs + batches)
+    // - 1,2: Signal start/stop of a run (one batch)
+    // - 4  : Signal selection of a batch as a non-outlier
+    // - 5  : Signal selection of an iteration as candidate for final result.
+    //        The last iteration selected corresponds to the final results.
+    //        Argument #run_size does not include outliers.
     template<bool show_info = false, bool show_debug = false,
-             class Clock, class Func>
+             class Clock, class Func, class... FuncCB>
     static
-    result<Clock> run(const parameters<Clock> & parameters, Func&& func,
-                      func_iter_start_type && func_iter_start = NULL,
-                      func_batch_start_type && func_batch_start = NULL,
-                      func_batch_stop_type && func_batch_stop = NULL,
-                      func_iter_stop_type && func_iter_stop = NULL,
-                      func_batch_select_type && func_batch_select = NULL,
-                      func_iter_select_type && func_iter_select = NULL);
+    typename std::enable_if< sizeof...(FuncCB) == 0 || sizeof...(FuncCB) == 6,
+                             result<Clock> >::type
+    run(const parameters<Clock> & parameters, Func&& func,
+        FuncCB&& ...func_cbs);
 
     // Same with default parameters
     template<class Clock = ::trun::time::default_clock,
              bool show_info = false, bool show_debug = false,
-             class Func>
+             class Func, class... FuncCB>
     static
-    result<Clock> run(Func&& func,
-                      func_iter_start_type && func_iter_start = NULL,
-                      func_batch_start_type && func_batch_start = NULL,
-                      func_batch_stop_type && func_batch_stop = NULL,
-                      func_iter_stop_type && func_iter_stop = NULL,
-                      func_batch_select_type && func_batch_select = NULL,
-                      func_iter_select_type && func_iter_select = NULL);
+    typename std::enable_if< sizeof...(FuncCB) == 0 || sizeof...(FuncCB) == 6,
+                             result<Clock> >::type
+    run(Func&& func, FuncCB&& ...func_cbs);
 
 
     // Dump results.
