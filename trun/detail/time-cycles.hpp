@@ -58,13 +58,15 @@ trun::time::tsc_cycles::time_point
 trun::time::tsc_cycles::now()
 {
 #if (defined(__GNUC__) || defined(__ICC) || defined(__SUNPRO_C)) && defined(__x86_64__)
-    unsigned int op, eax, ebx, ecx, edx;
     unsigned high, low, signature;
     asm volatile("rdtscp" : "=a" (low), "=d" (high), "=c"(signature));
+
+    unsigned int op, eax, ebx, ecx, edx;
     op = 0;
     asm volatile("cpuid"
                  : "=a"(eax), "=b"(ebx), "=c"(ecx), "=d"(edx)
                  : "a" (op));
+
     unsigned long long res = ((unsigned long long)low) | (((unsigned long long)high) << 32);
     return tsc_cycles::time_point(tsc_cycles::duration(res));
 #else
