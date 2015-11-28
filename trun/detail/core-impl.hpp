@@ -91,17 +91,7 @@ namespace trun {
             template<class C>
             static inline
             typename result<C>::duration duration_raw(const typename result<C>::duration::rep & value) {
-                using res_duration = typename result<C>::duration;
-                using res_rep = typename result<C>::duration::rep;
-		return std::forward<res_duration>(res_duration(res_rep(value)));
-            }
-
-            template<class C>
-            static inline
-            typename result<C>::duration duration_clock(const typename C::duration & value) {
-                using res_duration = typename result<C>::duration;
-                using res_rep = typename result<C>::duration::rep;
-		return std::forward<res_duration>(res_duration(res_rep(value.count())));
+                return typename result<C>::duration(value);
             }
 
             template<bool calibrating, class P>
@@ -152,7 +142,7 @@ namespace trun {
                     auto end = C::now();
                     func_batch_stop(iteration, i, batch_size,
                                     std::forward<Fcb>(func_cbs)...);
-                    auto delta = duration_clock<C>(end - start);
+                    auto delta = end - start;
                     samples[i] = delta.count();
                 }
 
@@ -172,13 +162,11 @@ namespace trun {
                               std::forward<F>(func), std::forward<Fcb>(func_cbs)...);
             }
 
-            template<bool first, class Clock, class... Fcb>
+            template<class Clock, class... Fcb>
             static inline
             result<Clock> stats(const parameters<Clock> &params,
                                 const size_t iteration,
                                 std::vector<typename result<Clock>::duration::rep> &samples,
-                                const typename result<Clock>::duration::rep mean,
-                                const typename result<Clock>::duration::rep sigma,
                                 Fcb&&... func_cbs)
             {
                 using rep_type = typename result<Clock>::duration::rep;
@@ -192,25 +180,38 @@ namespace trun {
                 res.run_size_all = params.run_size;
                 res.batch_size = params.batch_size;
 
-                rep_type outlier = params.confidence_outlier_sigma * sigma;
-                if (first) {
-                    outlier = std::numeric_limits<rep_type>::max();
-                }
                 rep_type sum = 0;
                 rep_type sq_sum = 0;
 
+                // calculate overall statistics
                 for (size_t i = 0; i < params.run_size; i++) {
                     // normalize to per-experiment results
                     auto elem = samples[i];
-                    elem = elem / params.batch_size;
+		    elem = elem / params.batch_size;
+		    samples[i] = elem;
 
                     // statistics of all experiments
                     res.min_all = std::min(duration_raw<Clock>(elem), res.min_all);
                     res.max_all = std::max(duration_raw<Clock>(elem), res.max_all);
 
+                    // statistics of non-outliers
+                    sum += elem;
+                    sq_sum += std::pow(elem, 2);
+                }
+
+                rep_type s_mean = sum / res.run_size_all;
+                rep_type s_variance = (sq_sum / res.run_size_all) - std::pow(s_mean, 2);
+                rep_type s_sigma = std::sqrt(s_variance);
+                rep_type outlier = params.confidence_outlier_sigma * s_sigma;
+
+                // calculate statistics without outliers
+                sum = 0;
+                sq_sum = 0;
+                for (size_t i = 0; i < params.run_size; i++) {
+                    auto elem = samples[i];
+
                     // ignore outliers
-                    if (std::abs(elem - mean) > outlier) {
-                        // printf("x %f | %f | %f | %f | %d\n", elem, mean, sigma, outlier, first);
+                    if (std::abs(elem - s_mean) > outlier) {
                         continue;
                     }
 
@@ -218,7 +219,6 @@ namespace trun {
                                       std::forward<Fcb>(func_cbs)...);
 
                     // statistics of non-outliers
-                    samples[i] = elem;
                     res.min = std::min(duration_raw<Clock>(elem), res.min);
                     res.max = std::max(duration_raw<Clock>(elem), res.max);
                     sum += elem;
@@ -226,9 +226,9 @@ namespace trun {
                     res.run_size++;
                 }
 
-                rep_type s_mean = sum / res.run_size;
-                rep_type s_variance = (sq_sum / res.run_size) - std::pow(s_mean, 2);
-                rep_type s_sigma = std::sqrt(s_variance);
+                s_mean = sum / res.run_size;
+                s_variance = (sq_sum / res.run_size) - std::pow(s_mean, 2);
+                s_sigma = std::sqrt(s_variance);
 
                 res.mean = duration_raw<Clock>(s_mean);
                 res.sigma = duration_raw<Clock>(s_sigma);
@@ -281,9 +281,6 @@ void trun::detail::core::run(::trun::result<typename P::clock_type> & res, P & p
     size_t old_batch_size;
 
     std::vector<rep_type> samples(p.run_size);
-    result<C> res_prev;                 // TODO: remove and use res_best?
-    res_prev.sigma = duration_raw<C>(0);
-    res_prev.mean = duration_raw<C>(0);
     result<C> res_best;
     res_best.sigma = duration_raw<C>(std::numeric_limits<rep_type>::max());
 
@@ -311,16 +308,8 @@ void trun::detail::core::run(::trun::result<typename P::clock_type> & res, P & p
         experiments += (p.run_size * p.batch_size);
 
         // calculate statistics
-        result<C> res_curr;
-        if (iterations == 1) {
-            res_curr = stats<true>(p, iterations-1, samples,
-                                   res_prev.mean.count(), res_prev.sigma.count(),
+        result<C> res_curr = stats(p, iterations-1, samples,
                                    std::forward<Fcb>(func_cbs)...);
-        } else {
-            res_curr = stats<false>(p, iterations-1, samples,
-                                    res_prev.mean.count(), res_prev.sigma.count(),
-                                    std::forward<Fcb>(func_cbs)...);
-        }
         auto width = res_curr.mean.count() * stddev_ratio;
 
         trun::detail::debug<show_debug>(
@@ -400,8 +389,6 @@ void trun::detail::core::run(::trun::result<typename P::clock_type> & res, P & p
                 p.run_size = params.run_size;
             }
         }
-
-        res_prev = res_curr;
     }
 
     res = res_best;
