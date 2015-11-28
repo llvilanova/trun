@@ -287,6 +287,11 @@ void trun::detail::core::run(::trun::result<typename P::clock_type> & res, P & p
     size_t experiments = 0;
     size_t iterations = 0;
 
+    // check if population is statistically significant
+    auto significant = [&](const result<C>& current) {
+        return current.run_size >= params.run_size;
+    };
+
     trun::detail::debug<show_debug>(
         "clock_overhead_perc=%f confidence_sigma=%f stddev_perc=%f "
         "warmup=%lu runs_size=%lu batch_size=%lu max_experiments=%lu",
@@ -317,11 +322,6 @@ void trun::detail::core::run(::trun::result<typename P::clock_type> & res, P & p
             res_curr.mean.count(), res_curr.sigma.count(), width,
             res_curr.run_size, res_curr.run_size_all, res_curr.batch_size, experiments);
 
-        // discard populations without statistical significance
-        if (res_curr.run_size < params.run_size) {
-            continue;
-        }
-
         // update 'clock_time' if we're in calibration mode
         update_clock_time<calibrating>(p, res_curr.mean);
 
@@ -331,7 +331,7 @@ void trun::detail::core::run(::trun::result<typename P::clock_type> & res, P & p
             bool can_match = !((calibrating && iterations < 2) ||
                                (!calibrating && old_batch_size < 2));
             res_curr.converged = match && can_match;
-            if (match) {
+            if (match && significant(res_curr)) {
                 res_best = res_curr;
                 func_iter_select(iterations-1, p.run_size, p.batch_size,
                                  std::forward<Fcb>(func_cbs)...);
@@ -340,7 +340,7 @@ void trun::detail::core::run(::trun::result<typename P::clock_type> & res, P & p
                 }
             } else {
                 // keep track of best result in case we hit the run limit
-                if (res_curr.sigma < res_best.sigma) {
+                if (res_curr.sigma < res_best.sigma && significant(res_curr)) {
                     res_best = res_curr;
                     func_iter_select(iterations-1, p.run_size, p.batch_size,
                                      std::forward<Fcb>(func_cbs)...);
@@ -349,6 +349,11 @@ void trun::detail::core::run(::trun::result<typename P::clock_type> & res, P & p
                     break;
                 }
             }
+        }
+
+        // discard populations without statistical significance
+        if (!significant(res_curr)) {
+            continue;
         }
 
         // keep timing overhead under control
