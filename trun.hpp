@@ -180,7 +180,7 @@ namespace trun {
         // Use the TSC to count time.
         class tsc_clock {
         public:
-            using rep = unsigned long long;
+            using rep = double;
             using period = std::pico;
             using duration = std::chrono::duration<rep, period>;
             using time_point = std::chrono::time_point<tsc_clock>;

@@ -91,7 +91,8 @@ trun::parameters<Clock>::convert() const
             std::chrono::duration<typename Clock::rep, std::ratio<1>>
             >(this->clock_time);
         d *= tsc_cycles::frequency();
-        res.clock_time = typename ClockTarget::duration(d.count());
+        res.clock_time = typename ClockTarget::duration(
+            typename ClockTarget::rep(d.count()));
     } else {
         res.clock_time = this->clock_time;
     }
