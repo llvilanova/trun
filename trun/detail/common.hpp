@@ -29,21 +29,11 @@
 namespace trun {
     namespace detail {
 
-        template<bool show, class... Args>
+        template<trun::message level, trun::message req, class... Args>
         static inline
-        void info(const std::string & msg, Args&&...args)
+        void message(const std::string & msg, Args&&...args)
         {
-            if (show) {
-                std::string s = "[trun] " + msg;
-                warnx(s.c_str(), std::forward<Args>(args)...);
-            }
-        }
-
-        template<bool show, class... Args>
-        static inline
-        void debug(const std::string & msg, Args&&...args)
-        {
-            if (show) {
+            if (req >= level) {
                 std::string s = "[trun] " + msg;
                 warnx(s.c_str(), std::forward<Args>(args)...);
             }

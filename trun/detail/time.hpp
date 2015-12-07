@@ -37,7 +37,7 @@ namespace trun {
 
         }
 
-        template<class C, bool show_info, bool show_debug>
+        template<class C, trun::message msg>
         static inline
         parameters<C> calibrate(const parameters<C> & params)
         {
@@ -46,7 +46,7 @@ namespace trun {
             res_params.clock_time = typename C::duration(typename C::rep(0));
             trun::detail::parameters::check(res_params);
 
-            trun::detail::info<show_info>("Calibrating clock overheads...");
+            trun::detail::message<trun::message::INFO, msg>("Calibrating clock overheads...");
             auto time = []() {
                 auto t1 = C::now();
                 (void)t1;
@@ -54,7 +54,7 @@ namespace trun {
                 (void)t2;
             };
             result<C> res;
-            trun::detail::core::run<true, show_info, show_debug>(res, params, time);
+            trun::detail::core::run<true, msg>(res, params, time);
             if (!res.converged) {
                 errx(1, "[trun] clock calibration did not converge");
             }
@@ -64,7 +64,7 @@ namespace trun {
             return std::move(res_params);
         }
 
-        template<class C, bool show_info, bool show_debug>
+        template<class C, trun::message msg>
         static inline
         parameters<C> calibrate()
         {
@@ -75,7 +75,7 @@ namespace trun {
             clock_params.warmup_batch_size = 1000;
             clock_params.batch_size = 10000;
             clock_params.max_experiments = 1000000000;
-            clock_params = calibrate<C, show_info, show_debug>(clock_params);
+            clock_params = calibrate<C, msg>(clock_params);
 
             res_params.clock_time = clock_params.clock_time;
             return std::move(res_params);

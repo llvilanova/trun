@@ -29,7 +29,7 @@
 
 namespace trun {
 
-    template<bool show_info, bool show_debug, class C, class F, class... Fcb>
+    template<trun::message msg, class C, class F, class... Fcb>
     static inline
     typename std::enable_if<(sizeof...(Fcb) == 0 || sizeof...(Fcb) == 6),
                             result<C>>::type
@@ -40,34 +40,34 @@ namespace trun {
           // parameters<::trun::time::tsc_cycles> params_2 = params.convert<::trun::time::tsc_cycles>();
           parameters<::trun::time::tsc_cycles> params_2 =
             params.template convert<::trun::time::tsc_cycles>();
-          auto res = run(params_2, std::forward<F>(func), std::forward<Fcb>(func_cbs)...);
+          auto res = run<msg>(params_2, std::forward<F>(func), std::forward<Fcb>(func_cbs)...);
           return res.template convert<C>();
 
         } else {
           result<C> res;
           parameters<C> run_params = params;
           if (params.clock_time.count() == 0) {
-            run_params = time::calibrate<C, show_info, show_debug>(params);
+              run_params = time::calibrate<C, msg>(params);
           }
 
           ::trun::time::detail::check(C());
           detail::parameters::check(run_params);
-          detail::info<show_info>("Executing benchmark...");
-          trun::detail::core::run<false, show_info, show_debug>(
+          detail::message<message::INFO, msg>("Executing benchmark...");
+          trun::detail::core::run<false, msg>(
             res, run_params, std::forward<F>(func), std::forward<Fcb>(func_cbs)...);
 
           return res;
         }
     }
 
-    template<class C, bool show_info, bool show_debug, class F, class... Fcb>
+    template<class C, trun::message msg, class F, class... Fcb>
     static inline
     typename std::enable_if<(sizeof...(Fcb) == 0 || sizeof...(Fcb) == 6),
                             result<C>>::type
     run(F&& func, Fcb&&... func_cbs)
     {
-        auto params = time::calibrate<C, show_info, show_debug>();
-        return run<show_info, show_debug>(
+        auto params = time::calibrate<C, msg>();
+        return run<msg>(
             std::forward<parameters<C>>(params),
             std::forward<F>(func),
             std::forward<Fcb>(func_cbs)...);

@@ -33,6 +33,13 @@
 
 namespace trun {
 
+    enum class message {
+        NONE,
+        INFO,
+        DEBUG,
+        DEBUG_VERBOSE,
+    };
+
     // Experiment run results.
     //
     // Timing numbers are for a single experiment, and do not contain
@@ -132,15 +139,13 @@ namespace trun {
 
         // Calibrate clock overheads.
         //
-        // Uses slightly better parameters than the default ones.
-        template<class Clock = default_clock,
-                 bool show_info = false, bool show_debug = false>
+        // Uses slightly stricter parameters than the default ones.
+        template<class Clock = default_clock, trun::message msg = trun::message::NONE>
         static
         parameters<Clock> calibrate();
 
         // Calibrate clock overheads.
-        template<class Clock,
-                 bool show_info = false, bool show_debug = false>
+        template<class Clock, trun::message msg = trun::message::NONE>
         static
         parameters<Clock> calibrate(const trun::parameters<Clock> & parameters);
 
@@ -236,8 +241,7 @@ namespace trun {
     // - 5  : Signal selection of an iteration as candidate for final result.
     //        The last iteration selected corresponds to the final results.
     //        Argument #run_size does not include outliers.
-    template<bool show_info = false, bool show_debug = false,
-             class Clock, class Func, class... FuncCB>
+    template<trun::message msg = trun::message::NONE, class Clock, class Func, class... FuncCB>
     static
     typename std::enable_if< sizeof...(FuncCB) == 0 || sizeof...(FuncCB) == 6,
                              result<Clock> >::type
@@ -245,8 +249,7 @@ namespace trun {
         FuncCB&& ...func_cbs);
 
     // Same with default parameters
-    template<class Clock = ::trun::time::default_clock,
-             bool show_info = false, bool show_debug = false,
+    template<class Clock = ::trun::time::default_clock, trun::message msg = trun::message::NONE,
              class Func, class... FuncCB>
     static
     typename std::enable_if< sizeof...(FuncCB) == 0 || sizeof...(FuncCB) == 6,

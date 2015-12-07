@@ -162,7 +162,7 @@ namespace trun {
                               std::forward<F>(func), std::forward<Fcb>(func_cbs)...);
             }
 
-            template<class Clock, class... Fcb>
+            template<trun::message msg, class Clock, class... Fcb>
             static inline
             result<Clock> stats(const parameters<Clock> &params,
                                 const size_t iteration,
@@ -209,6 +209,9 @@ namespace trun {
                 sq_sum = 0;
                 for (size_t i = 0; i < params.run_size; i++) {
                     auto elem = samples[i];
+
+                    trun::detail::message<trun::message::DEBUG_VERBOSE, msg>(
+                        "value=%f outlier=%d", elem, std::abs(elem - s_mean) > outlier);
 
                     // ignore outliers
                     if (std::abs(elem - s_mean) > outlier) {
@@ -265,7 +268,7 @@ namespace trun {
 // Stops when:
 //   stddev <= mean * (stddev_perc / 100)  --> mean
 //   total runs >= max_experiments         --> mean with lowest sigma
-template<bool calibrating, bool show_info, bool show_debug, class P, class F, class... Fcb>
+template<bool calibrating, trun::message msg, class P, class F, class... Fcb>
 static inline
 void trun::detail::core::run(::trun::result<typename P::clock_type> & res, P & params,
                              F&& func, Fcb&&... func_cbs)
@@ -292,7 +295,7 @@ void trun::detail::core::run(::trun::result<typename P::clock_type> & res, P & p
         return current.run_size >= params.run_size;
     };
 
-    trun::detail::debug<show_debug>(
+    trun::detail::message<trun::message::DEBUG, msg>(
         "clock_overhead_perc=%f confidence_sigma=%f stddev_perc=%f "
         "warmup=%lu runs_size=%lu batch_size=%lu max_experiments=%lu",
         p.clock_overhead_perc, p.confidence_sigma, p.stddev_perc,
@@ -313,11 +316,11 @@ void trun::detail::core::run(::trun::result<typename P::clock_type> & res, P & p
         experiments += (p.run_size * p.batch_size);
 
         // calculate statistics
-        result<C> res_curr = stats(p, iterations-1, samples,
-                                   std::forward<Fcb>(func_cbs)...);
+        result<C> res_curr = stats<msg>(p, iterations-1, samples,
+                                        std::forward<Fcb>(func_cbs)...);
         auto width = res_curr.mean.count() * stddev_ratio;
 
-        trun::detail::debug<show_debug>(
+        trun::detail::message<trun::message::DEBUG, msg>(
             "mean=%f sigma=%f width=%f run_size=%lu run_size_all=%lu batch_size=%lu experiments=%lu",
             res_curr.mean.count(), res_curr.sigma.count(), width,
             res_curr.run_size, res_curr.run_size_all, res_curr.batch_size, experiments);
