@@ -304,6 +304,11 @@ void trun::detail::core::run(::trun::result<typename P::clock_type> & res, P & p
     while (true) {
         old_batch_size = p.batch_size;
 
+        experiments += (p.run_size * p.batch_size);
+        if (experiments >= p.max_experiments) {
+            break;
+        }
+
         // run experiment batches
         if (samples.size() < p.run_size) {
             samples.resize(p.run_size);
@@ -313,7 +318,6 @@ void trun::detail::core::run(::trun::result<typename P::clock_type> & res, P & p
         loops<C>(samples, iterations, p.warmup_batch_size, p.run_size, p.batch_size,
                  std::forward<F>(func), std::forward<Fcb>(func_cbs)...);
         iterations++;
-        experiments += (p.run_size * p.batch_size);
 
         // calculate statistics
         result<C> res_curr = stats<msg>(p, iterations-1, samples,
@@ -347,9 +351,6 @@ void trun::detail::core::run(::trun::result<typename P::clock_type> & res, P & p
                     res_best = res_curr;
                     func_iter_select(iterations-1, p.run_size, p.batch_size,
                                      std::forward<Fcb>(func_cbs)...);
-                }
-                if (experiments >= p.max_experiments && can_match) {
-                    break;
                 }
             }
         }
