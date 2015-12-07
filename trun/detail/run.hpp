@@ -29,7 +29,7 @@
 
 namespace trun {
 
-    template<trun::message msg, class C, class F, class... Fcb>
+    template<trun::message msg, bool get_runs, class C, class F, class... Fcb>
     static inline
     typename std::enable_if<(sizeof...(Fcb) == 0 || sizeof...(Fcb) == 6),
                             result<C>>::type
@@ -40,7 +40,8 @@ namespace trun {
           // parameters<::trun::time::tsc_cycles> params_2 = params.convert<::trun::time::tsc_cycles>();
           parameters<::trun::time::tsc_cycles> params_2 =
             params.template convert<::trun::time::tsc_cycles>();
-          auto res = run<msg>(params_2, std::forward<F>(func), std::forward<Fcb>(func_cbs)...);
+          auto res = run<msg, get_runs>(
+              params_2, std::forward<F>(func), std::forward<Fcb>(func_cbs)...);
           return res.template convert<C>();
 
         } else {
@@ -53,21 +54,21 @@ namespace trun {
           ::trun::time::detail::check(C());
           detail::parameters::check(run_params);
           detail::message<message::INFO, msg>("Executing benchmark...");
-          trun::detail::core::run<false, msg>(
+          trun::detail::core::run<false, msg, get_runs>(
             res, run_params, std::forward<F>(func), std::forward<Fcb>(func_cbs)...);
 
           return res;
         }
     }
 
-    template<class C, trun::message msg, class F, class... Fcb>
+    template<class C, trun::message msg, bool get_runs, class F, class... Fcb>
     static inline
     typename std::enable_if<(sizeof...(Fcb) == 0 || sizeof...(Fcb) == 6),
                             result<C>>::type
     run(F&& func, Fcb&&... func_cbs)
     {
         auto params = time::calibrate<C, msg>();
-        return run<msg>(
+        return run<msg, get_runs>(
             std::forward<parameters<C>>(params),
             std::forward<F>(func),
             std::forward<Fcb>(func_cbs)...);

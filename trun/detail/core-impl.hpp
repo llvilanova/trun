@@ -268,7 +268,7 @@ namespace trun {
 // Stops when:
 //   stddev <= mean * (stddev_perc / 100)  --> mean
 //   total runs >= max_experiments         --> mean with lowest sigma
-template<bool calibrating, trun::message msg, class P, class F, class... Fcb>
+template<bool calibrating, trun::message msg, bool get_runs, class P, class F, class... Fcb>
 static inline
 void trun::detail::core::run(::trun::result<typename P::clock_type> & res, P & params,
                              F&& func, Fcb&&... func_cbs)
@@ -293,6 +293,15 @@ void trun::detail::core::run(::trun::result<typename P::clock_type> & res, P & p
     // check if population is statistically significant
     auto significant = [&](const result<C>& current) {
         return current.run_size >= params.run_size;
+    };
+
+    auto topple_runs = [](result<C>& dest, const std::vector<double>& src) {
+        if (get_runs) {
+            dest.runs.resize(dest.run_size_all);
+            for (auto i = 0; i < dest.run_size_all; i++) {
+                dest.runs[i] = duration_raw<C>(src[i]);
+            }
+        }
     };
 
     trun::detail::message<trun::message::DEBUG, msg>(
@@ -340,6 +349,7 @@ void trun::detail::core::run(::trun::result<typename P::clock_type> & res, P & p
             res_curr.converged = match && can_match;
             if (match && significant(res_curr)) {
                 res_best = res_curr;
+                topple_runs(res_best, samples);
                 func_iter_select(iterations-1, p.run_size, p.batch_size,
                                  std::forward<Fcb>(func_cbs)...);
                 if (can_match) {
@@ -349,6 +359,7 @@ void trun::detail::core::run(::trun::result<typename P::clock_type> & res, P & p
                 // keep track of best result in case we hit the run limit
                 if (res_curr.sigma < res_best.sigma && significant(res_curr)) {
                     res_best = res_curr;
+                    topple_runs(res_best, samples);
                     func_iter_select(iterations-1, p.run_size, p.batch_size,
                                      std::forward<Fcb>(func_cbs)...);
                 }

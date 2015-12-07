@@ -58,6 +58,11 @@ namespace trun {
         size_t batch_size;
         bool converged;
 
+        // Mean experiment duration of each run (including outliers)
+        //
+        // Has contents only when @get_runs is used in trun().
+        std::vector<duration> runs;
+
         // Scale this results down (divide) by the given factor.
         //
         // Useful when the benchmarked function actually contains multiple
@@ -222,6 +227,9 @@ namespace trun {
     // If results do not converge (#parameters.max_experiments is reached),
     // return the mean with lowest standard deviation found so far.
     //
+    // If template argument @get_runs is used, the result will contain elements
+    // in #result<Clock>.runs.
+    //
     // You can provide the 'func_*' arguments to gather additional statistics on
     // each batch. See above for their meaning. The timing results do not
     // include the calls to these functions.
@@ -241,7 +249,8 @@ namespace trun {
     // - 5  : Signal selection of an iteration as candidate for final result.
     //        The last iteration selected corresponds to the final results.
     //        Argument #run_size does not include outliers.
-    template<trun::message msg = trun::message::NONE, class Clock, class Func, class... FuncCB>
+    template<trun::message msg = trun::message::NONE, bool get_runs = false,
+             class Clock, class Func, class... FuncCB>
     static
     typename std::enable_if< sizeof...(FuncCB) == 0 || sizeof...(FuncCB) == 6,
                              result<Clock> >::type
@@ -250,7 +259,7 @@ namespace trun {
 
     // Same with default parameters
     template<class Clock = ::trun::time::default_clock, trun::message msg = trun::message::NONE,
-             class Func, class... FuncCB>
+             bool get_runs = false, class Func, class... FuncCB>
     static
     typename std::enable_if< sizeof...(FuncCB) == 0 || sizeof...(FuncCB) == 6,
                              result<Clock> >::type
@@ -284,6 +293,14 @@ namespace trun {
                         std::ostream &output = std::cout,
                         bool show_header = true,
                         bool force_converged = true);
+
+        // Dump experiment run results using comma-separate value (CSV) format
+        template<class Ratio = std::ratio<1>, class Clock>
+        static
+        void csv_runs(const result<Clock> &results,
+                      std::ostream &output = std::cout,
+                      bool show_header = true,
+                      bool force_converged = true);
 
     }
 }

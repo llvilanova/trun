@@ -85,6 +85,29 @@ namespace trun {
                    << "run_size_all\n";
         }
 
+        template<class Ratio = std::nano, class Clock>
+        static inline
+        void csv_runs(const result<Clock> &results, std::ostream & output,
+                      bool show_header, bool force_converged)
+        {
+            if (force_converged && !results.converged) {
+                errx(1, "[trun] Results did not converge (tried %lu runs on batches of %lu)",
+                     results.run_size_all, results.batch_size);
+            }
+
+            if (show_header) {
+                std::string units = ::trun::time::units<Ratio>(Clock());
+                output << "run,mean(" << units << ")\n";
+            }
+
+            for (size_t i = 0; i < results.runs.size(); i++) {
+                auto t = results.runs[i];
+                output << i
+                       << "," << std::chrono::duration<double, Ratio>(t).count()
+                       << "\n";
+            }
+        }
+
     }
 }
 

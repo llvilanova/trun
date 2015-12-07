@@ -36,6 +36,9 @@ trun::result<Clock>::scale(unsigned long long factor) const
     r.max_all /= factor;
     r.mean /= factor;
     r.sigma /= factor;
+    for (auto t: r.runs) {
+        t /= factor;
+    }
     return r;
 }
 
@@ -47,6 +50,7 @@ trun::result<ClockTarget>
 trun::result<Clock>::convert() const
 {
     trun::result<ClockTarget> res;
+    res.runs.resize(this->runs.size());
     if (std::is_same<Clock, trun::time::tsc_cycles>::value &&
         !std::is_same<ClockTarget, trun::time::tsc_cycles>::value) {
         res.min = trun::time::tsc_cycles::time(this->min);
@@ -55,6 +59,9 @@ trun::result<Clock>::convert() const
         res.max_all = trun::time::tsc_cycles::time(this->max_all);
         res.mean = trun::time::tsc_cycles::time(this->mean);
         res.sigma = trun::time::tsc_cycles::time(this->sigma);
+        for (auto i=0; i<res.runs.size(); i++) {
+            res.runs[i] = trun::time::tsc_cycles::time(this->runs[i]);
+        }
     } else if (!std::is_same<Clock, trun::time::tsc_cycles>::value &&
                std::is_same<ClockTarget, trun::time::tsc_cycles>::value) {
         errx(1, "[trun] not implemented");
@@ -65,6 +72,9 @@ trun::result<Clock>::convert() const
         res.max_all = this->max_all;
         res.mean = this->mean;
         res.sigma = this->sigma;
+        for (auto i=0; i<res.runs.size(); i++) {
+            res.runs[i] = this->runs[i];
+        }
     }
     res.run_size = this->run_size;
     res.run_size_all = this->run_size_all;
