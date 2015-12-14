@@ -69,6 +69,7 @@ trun::parameters<C>::parameters()
     ,stddev_perc(TRUN_STDDEV_PERC)
     ,warmup_batch_size(TRUN_WARMUP_BATCH_SIZE)
     ,run_size(TRUN_RUN_SIZE)
+    ,run_size_min_significance(TRUN_RUN_SIZE)
     ,batch_size(TRUN_BATCH_SIZE)
     ,max_experiments(TRUN_MAX_EXPERIMENTS)
 {

@@ -103,10 +103,14 @@ namespace trun {
     //     The value is set in terms of a percentage of the mean.
     // @warmup_batch_size: number of experiments before every round
     //     (default: TRUN_WARMUP_BATCH_SIZE)
-    // @run_size: initial number of runs
+    // @run_size: minimum number of runs
     //     (default: TRUN_RUN_SIZE)
-    //     Statistics are calculated across runs. Experiments with less than
-    //     this number of non-outlier results will be discarded.
+    //     Statistics are calculated across runs. At least this number of
+    //     experiment runs will be executed.
+    // @run_size_min_significance: minimum number of runs for statistical significance
+    //     (default: TRUN_RUN_SIZE)
+    //     Experiments with less than this number of non-outlier results will be
+    //     discarded.
     // @batch_size: initial number of iterations to batch together
     //     (default: TRUN_BATCH_SIZE)
     //     Every batch is timed separately to reduce clock overheads.
@@ -128,6 +132,7 @@ namespace trun {
 
         size_t warmup_batch_size;
         size_t run_size;
+        size_t run_size_min_significance;
         size_t batch_size;
         size_t max_experiments;
 

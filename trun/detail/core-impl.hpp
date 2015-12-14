@@ -294,7 +294,7 @@ void trun::detail::core::run(::trun::result<typename P::clock_type> & res, P & p
 
     // check if population is statistically significant
     auto significant = [&](const result<C>& current) {
-        return current.run_size >= params.run_size;
+        return current.run_size >= params.run_size_min_significance;
     };
 
     auto topple_runs = [](result<C>& dest, const std::vector<double>& src) {
