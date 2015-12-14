@@ -362,7 +362,10 @@ void trun::detail::core::run(::trun::result<typename P::clock_type> & res, P & p
                 }
             } else {
                 // keep track of best result in case we hit the run limit
-                if (res_curr.sigma < res_best.sigma && significant(res_curr)) {
+                if (res_curr.sigma < res_best.sigma &&
+                    (significant(res_curr) ||
+                     // select at least one
+                     iterations <= 1)) {
                     res_best = res_curr;
                     topple_runs(res_best, samples);
                     func_iter_select(iterations-1, p.run_size, p.batch_size,
