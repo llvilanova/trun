@@ -196,7 +196,7 @@ namespace trun {
         class tsc_clock {
         public:
             using rep = double;
-            using period = std::pico;
+            using period = std::milli;
             using duration = std::chrono::duration<rep, period>;
             using time_point = std::chrono::time_point<tsc_clock>;
 
