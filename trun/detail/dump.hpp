@@ -79,7 +79,7 @@ namespace trun {
                    << "sigma(" << units << "),"
                    << "min(" << units << "),"
                    << "max(" << units << "),"
-                   << "run_size,batch_size,converved,"
+                   << "run_size,batch_size,converged,"
                    << "min_all(" << units << "),"
                    << "max_all(" << units << "),"
                    << "run_size_all\n";
