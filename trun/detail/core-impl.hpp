@@ -283,7 +283,6 @@ void trun::detail::core::run(::trun::result<typename P::clock_type> & res, P & p
     parameters<C> p = params;
     double clock_overhead = p.clock_overhead_perc / 100;
     double stddev_ratio = p.stddev_perc / 100;
-    size_t old_batch_size;
 
     std::vector<rep_type> samples(p.run_size);
     result<C> res_best;
@@ -313,8 +312,6 @@ void trun::detail::core::run(::trun::result<typename P::clock_type> & res, P & p
         p.warmup_batch_size, p.run_size, p.batch_size, p.max_experiments);
 
     while (true) {
-        old_batch_size = p.batch_size;
-
         experiments += (p.run_size * p.batch_size);
         if (experiments >= p.max_experiments) {
             break;
@@ -349,8 +346,7 @@ void trun::detail::core::run(::trun::result<typename P::clock_type> & res, P & p
         // check if we're done
         {
             bool match = res_curr.sigma.count() <= width;
-            bool can_match = !((calibrating && iterations < 2) ||
-                               (!calibrating && old_batch_size < 2));
+            bool can_match = iterations >= 2;
             res_curr.converged = match && can_match;
             if (match && significant(res_curr)) {
                 res_best = res_curr;
