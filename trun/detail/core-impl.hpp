@@ -167,8 +167,6 @@ namespace trun {
             result<Clock> stats(const parameters<Clock> &params,
                                 const size_t iteration,
                                 std::vector<typename result<Clock>::duration::rep> &samples,
-                                typename result<Clock>::duration &mean_all,
-                                typename result<Clock>::duration &sigma_all,
                                 std::vector<bool> &outliers,
                                 Fcb&&... func_cbs)
             {
@@ -183,65 +181,84 @@ namespace trun {
                 res.run_size_all = params.run_size;
                 res.batch_size = params.batch_size;
 
-                rep_type sum = 0;
-                rep_type sq_sum = 0;
+                // Calculate statistics using Welford's method
+                // (also appears in TAOCP, vol. 2)
+                rep_type m, m_prev=0, s=0, s_prev=0;
+                auto add_elem = [&](const size_t i, const rep_type elem) {
+                    if (i==0) {
+                        m_prev = m = elem;
+                        s_prev = 0;
+                    } else {
+                        m = m_prev + (elem - m_prev)/(i+1);
+                        s = s_prev + (elem - m_prev) * (elem - m);
+                        m_prev = m;
+                        s_prev = s;
+                    }
+                };
+                auto get_mean = [&](size_t size) {
+                    if (size > 1) {
+                        return m;
+                    } else {
+                        return 0.0;
+                    }
+                };
+                auto get_sigma = [&](size_t size) {
+                    if (size > 0) {
+                        auto variance = s / (size - 1);
+                        return sqrt(variance);
+                    } else {
+                        return 0.0;
+                    }
+                };
 
-                // calculate overall statistics
+                // statistics for all samples
                 for (size_t i = 0; i < params.run_size; i++) {
                     // normalize to per-experiment results
                     auto elem = samples[i];
 		    elem = elem / params.batch_size;
 		    samples[i] = elem;
 
-                    // statistics of all experiments
                     res.min_all = std::min(duration_raw<Clock>(elem), res.min_all);
                     res.max_all = std::max(duration_raw<Clock>(elem), res.max_all);
-                    sum += elem;
-                    sq_sum += std::pow(elem, 2);
+                    add_elem(i, elem);
                 }
 
-                rep_type s_mean = sum / res.run_size_all;
-                rep_type s_variance = (sq_sum / res.run_size_all) - std::pow(s_mean, 2);
-                rep_type s_sigma = std::sqrt(s_variance);
-                rep_type outlier = params.confidence_outlier_sigma * s_sigma;
-                mean_all = duration_raw<Clock>(s_mean);
-                sigma_all = duration_raw<Clock>(s_sigma);
+                rep_type mean = get_mean(res.run_size_all);
+                rep_type sigma = get_sigma(res.run_size_all);
+                res.mean_all = duration_raw<Clock>(mean);
+                res.sigma_all = duration_raw<Clock>(sigma);
+                rep_type outlier = params.confidence_outlier_sigma * sigma;
 
-                // calculate statistics without outliers
-                sum = 0;
-                sq_sum = 0;
+                // statistics for non-outliers
                 for (size_t i = 0; i < params.run_size; i++) {
                     auto elem = samples[i];
-
-                    bool is_outlier = std::abs(elem - s_mean) > outlier;
+                    bool is_outlier = std::abs(elem - mean) > outlier;
+                    if (get_runs) {
+                        outliers[i] = is_outlier;
+                    }
                     trun::detail::message<trun::message::DEBUG_VERBOSE, msg>(
                         "value=%f outlier=%d", elem, is_outlier);
 
                     // ignore outliers
-                    if (get_runs) {
-                        outliers[i] = is_outlier;
-                    }
-                    if (outlier) {
+                    if (is_outlier) {
                         continue;
                     }
 
-                    func_batch_select(iteration, i, params.batch_size,
+                    func_batch_select(iteration, i,
+                                      // is_outlier,
+                                      params.batch_size,
                                       std::forward<Fcb>(func_cbs)...);
 
-                    // statistics of non-outliers
                     res.min = std::min(duration_raw<Clock>(elem), res.min);
                     res.max = std::max(duration_raw<Clock>(elem), res.max);
-                    sum += elem;
-                    sq_sum += std::pow(elem, 2);
+                    add_elem(res.run_size, elem);
                     res.run_size++;
                 }
 
-                s_mean = sum / res.run_size;
-                s_variance = (sq_sum / res.run_size) - std::pow(s_mean, 2);
-                s_sigma = std::sqrt(s_variance);
-
-                res.mean = duration_raw<Clock>(s_mean);
-                res.sigma = duration_raw<Clock>(s_sigma);
+                mean = get_mean(res.run_size);
+                sigma = get_sigma(res.run_size);
+                res.mean = duration_raw<Clock>(mean);
+                res.sigma = duration_raw<Clock>(sigma);
 
                 return std::move(res);
             }
@@ -342,13 +359,10 @@ void trun::detail::core::run(::trun::result<typename P::clock_type> & res, P & p
         iterations++;
 
         // calculate statistics
-        typename result<C>::duration res_curr_mean_all;
-        typename result<C>::duration res_curr_sigma_all;
-                                        res_curr_mean_all, res_curr_sigma_all,
-        auto width = res_curr_mean_all.count() * stddev_ratio;
         result<C> res_curr = stats<msg, get_runs>(
             p, iterations-1, samples, outliers,
             std::forward<Fcb>(func_cbs)...);
+        auto width = res_curr.mean_all.count() * stddev_ratio;
 
         trun::detail::message<trun::message::DEBUG, msg>(
             "mean=%f sigma=%f width=%f run_size=%lu run_size_all=%lu batch_size=%lu experiments=%lu",
@@ -414,7 +428,7 @@ void trun::detail::core::run(::trun::result<typename P::clock_type> & res, P & p
             auto max_run_size = p.run_size * max_run_size_multiplier;
             auto top_run_size = p.run_size * max_run_size_multiplier * 10;
             auto min_run_size = p.run_size / max_run_size_multiplier;
-            auto new_run_size = pow((2 * p.confidence_sigma * res_curr_sigma_all.count()) / width, 2);
+            auto new_run_size = pow((2 * p.confidence_sigma * res_curr.sigma_all.count()) / width, 2);
             if (new_run_size > max_run_size && iterations == 1) {
                 p.run_size = std::ceil(max_run_size);
             } else if (new_run_size < min_run_size && iterations > 1) {

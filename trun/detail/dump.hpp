@@ -55,6 +55,8 @@ namespace trun {
                    << results.batch_size << ","
                    << results.converged << ",";
 
+            one(results.mean_all);
+            one(results.sigma_all);
             one(results.min_all);
             one(results.max_all);
             output << results.run_size_all << "\n";
@@ -80,6 +82,8 @@ namespace trun {
                    << "min(" << units << "),"
                    << "max(" << units << "),"
                    << "run_size,batch_size,converged,"
+                   << "mean_all(" << units << "),"
+                   << "sigma_all(" << units << "),"
                    << "min_all(" << units << "),"
                    << "max_all(" << units << "),"
                    << "run_size_all\n";

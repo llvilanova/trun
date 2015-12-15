@@ -52,8 +52,8 @@ namespace trun {
 
         duration min, min_all;
         duration max, max_all;
-        duration mean;
-        duration sigma;
+        duration mean, mean_all;
+        duration sigma, sigma_all;
         size_t run_size, run_size_all;
         size_t batch_size;
         bool converged;
