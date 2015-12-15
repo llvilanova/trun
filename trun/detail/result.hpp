@@ -36,8 +36,8 @@ trun::result<Clock>::scale(unsigned long long factor) const
     r.max_all /= factor;
     r.mean /= factor;
     r.sigma /= factor;
-    for (auto t: r.runs) {
-        t /= factor;
+    for (auto e: r.runs) {
+        std::get<0>(e) /= factor;
     }
     return r;
 }
@@ -60,7 +60,9 @@ trun::result<Clock>::convert() const
         res.mean = trun::time::tsc_cycles::time(this->mean);
         res.sigma = trun::time::tsc_cycles::time(this->sigma);
         for (auto i=0; i<res.runs.size(); i++) {
-            res.runs[i] = trun::time::tsc_cycles::time(this->runs[i]);
+            auto elem = this->runs[i];
+            res.runs[i] = std::make_pair(trun::time::tsc_cycles::time(std::get<0>(elem)),
+                                         std::get<1>(elem));
         }
     } else if (!std::is_same<Clock, trun::time::tsc_cycles>::value &&
                std::is_same<ClockTarget, trun::time::tsc_cycles>::value) {

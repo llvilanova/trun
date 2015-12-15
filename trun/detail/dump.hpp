@@ -97,13 +97,15 @@ namespace trun {
 
             if (show_header) {
                 std::string units = ::trun::time::units<Ratio>(Clock());
-                output << "run,mean(" << units << ")\n";
+                output << "outlier,mean(" << units << ")\n";
             }
 
             for (size_t i = 0; i < results.runs.size(); i++) {
-                auto t = results.runs[i];
-                output << i
-                       << "," << std::chrono::duration<double, Ratio>(t).count()
+                auto elem = results.runs[i];
+                auto time = std::get<0>(elem);
+                auto outlier = std::get<1>(elem);
+                output << int(outlier)
+                       << "," << std::chrono::duration<double, Ratio>(time).count()
                        << "\n";
             }
         }

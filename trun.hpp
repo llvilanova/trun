@@ -58,10 +58,10 @@ namespace trun {
         size_t batch_size;
         bool converged;
 
-        // Mean experiment duration of each run (including outliers)
+        // Mean experiment duration of each run (boolean identifies outliers)
         //
         // Has contents only when @get_runs is used in trun().
-        std::vector<duration> runs;
+        std::vector< std::tuple<duration, bool> > runs;
 
         // Scale this results down (divide) by the given factor.
         //

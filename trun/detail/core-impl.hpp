@@ -162,13 +162,14 @@ namespace trun {
                               std::forward<F>(func), std::forward<Fcb>(func_cbs)...);
             }
 
-            template<trun::message msg, class Clock, class... Fcb>
+            template<trun::message msg, bool get_runs, class Clock, class... Fcb>
             static inline
             result<Clock> stats(const parameters<Clock> &params,
                                 const size_t iteration,
                                 std::vector<typename result<Clock>::duration::rep> &samples,
                                 typename result<Clock>::duration &mean_all,
                                 typename result<Clock>::duration &sigma_all,
+                                std::vector<bool> &outliers,
                                 Fcb&&... func_cbs)
             {
                 using rep_type = typename result<Clock>::duration::rep;
@@ -212,11 +213,15 @@ namespace trun {
                 for (size_t i = 0; i < params.run_size; i++) {
                     auto elem = samples[i];
 
+                    bool is_outlier = std::abs(elem - s_mean) > outlier;
                     trun::detail::message<trun::message::DEBUG_VERBOSE, msg>(
-                        "value=%f outlier=%d", elem, std::abs(elem - s_mean) > outlier);
+                        "value=%f outlier=%d", elem, is_outlier);
 
                     // ignore outliers
-                    if (std::abs(elem - s_mean) > outlier) {
+                    if (get_runs) {
+                        outliers[i] = is_outlier;
+                    }
+                    if (outlier) {
                         continue;
                     }
 
@@ -285,6 +290,7 @@ void trun::detail::core::run(::trun::result<typename P::clock_type> & res, P & p
     double stddev_ratio = p.stddev_perc / 100;
 
     std::vector<rep_type> samples(p.run_size);
+    std::vector<bool> outliers(p.run_size);
     result<C> res_best;
     res_best.sigma = duration_raw<C>(std::numeric_limits<rep_type>::max());
 
@@ -296,11 +302,13 @@ void trun::detail::core::run(::trun::result<typename P::clock_type> & res, P & p
         return current.run_size >= params.run_size_min_significance;
     };
 
-    auto topple_runs = [](result<C>& dest, const std::vector<double>& src) {
+    auto topple_runs = [](result<C>& dest,
+                          const std::vector<double>& src_samples,
+                          const std::vector<bool>& src_outliers) {
         if (get_runs) {
             dest.runs.resize(dest.run_size_all);
             for (auto i = 0; i < dest.run_size_all; i++) {
-                dest.runs[i] = duration_raw<C>(src[i]);
+                dest.runs[i] = std::make_tuple(duration_raw<C>(src_samples[i]), src_outliers[i]);
             }
         }
     };
@@ -320,8 +328,14 @@ void trun::detail::core::run(::trun::result<typename P::clock_type> & res, P & p
         // run experiment batches
         if (samples.size() < p.run_size) {
             samples.resize(p.run_size);
+            if (get_runs) {
+                outliers.resize(p.run_size);
+            }
         } else if (samples.size() > p.run_size * 2) {
             samples.resize(p.run_size * 2);
+            if (get_runs) {
+                outliers.resize(p.run_size * 2);
+            }
         }
         loops<C>(samples, iterations, p.warmup_batch_size, p.run_size, p.batch_size,
                  std::forward<F>(func), std::forward<Fcb>(func_cbs)...);
@@ -330,10 +344,11 @@ void trun::detail::core::run(::trun::result<typename P::clock_type> & res, P & p
         // calculate statistics
         typename result<C>::duration res_curr_mean_all;
         typename result<C>::duration res_curr_sigma_all;
-        result<C> res_curr = stats<msg>(p, iterations-1, samples,
                                         res_curr_mean_all, res_curr_sigma_all,
-                                        std::forward<Fcb>(func_cbs)...);
         auto width = res_curr_mean_all.count() * stddev_ratio;
+        result<C> res_curr = stats<msg, get_runs>(
+            p, iterations-1, samples, outliers,
+            std::forward<Fcb>(func_cbs)...);
 
         trun::detail::message<trun::message::DEBUG, msg>(
             "mean=%f sigma=%f width=%f run_size=%lu run_size_all=%lu batch_size=%lu experiments=%lu",
@@ -350,7 +365,7 @@ void trun::detail::core::run(::trun::result<typename P::clock_type> & res, P & p
             res_curr.converged = match && can_match;
             if (match && significant(res_curr)) {
                 res_best = res_curr;
-                topple_runs(res_best, samples);
+                topple_runs(res_best, samples, outliers);
                 func_iter_select(iterations-1, p.run_size, p.batch_size,
                                  std::forward<Fcb>(func_cbs)...);
                 if (can_match) {
@@ -363,7 +378,7 @@ void trun::detail::core::run(::trun::result<typename P::clock_type> & res, P & p
                      // select at least one
                      iterations <= 1)) {
                     res_best = res_curr;
-                    topple_runs(res_best, samples);
+                    topple_runs(res_best, samples, outliers);
                     func_iter_select(iterations-1, p.run_size, p.batch_size,
                                      std::forward<Fcb>(func_cbs)...);
                 }
