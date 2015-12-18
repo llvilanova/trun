@@ -326,7 +326,7 @@ void trun::detail::core::run(::trun::result<typename P::clock_type> & res, P & p
                           const std::vector<bool>& src_outliers) {
         if (get_runs) {
             dest.runs.resize(dest.run_size_all);
-            for (auto i = 0; i < dest.run_size_all; i++) {
+            for (size_t i = 0; i < dest.run_size_all; i++) {
                 dest.runs[i] = std::make_tuple(duration_raw<C>(src_samples[i]), src_outliers[i]);
             }
         }
@@ -372,7 +372,7 @@ void trun::detail::core::run(::trun::result<typename P::clock_type> & res, P & p
 
         trun::detail::message<trun::message::DEBUG, msg>(
             "mean=%f sigma=%f width=%f run_size=%lu run_size_all=%lu batch_size=%lu experiments=%lu",
-            res_curr.mean.count(), res_curr.sigma.count(), width,
+            res_curr.mean.count(), res_curr.sigma.count(), width_all,
             res_curr.run_size, res_curr.run_size_all, res_curr.batch_size, experiments);
 
         // update 'clock_time' if we're in calibration mode

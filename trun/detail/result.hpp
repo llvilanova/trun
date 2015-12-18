@@ -63,7 +63,7 @@ trun::result<Clock>::convert() const
         res.mean_all = trun::time::tsc_cycles::time(this->mean_all);
         res.sigma = trun::time::tsc_cycles::time(this->sigma);
         res.sigma_all = trun::time::tsc_cycles::time(this->sigma_all);
-        for (auto i=0; i<res.runs.size(); i++) {
+        for (size_t i=0; i<res.runs.size(); i++) {
             auto elem = this->runs[i];
             res.runs[i] = std::make_pair(trun::time::tsc_cycles::time(std::get<0>(elem)),
                                          std::get<1>(elem));
@@ -80,7 +80,7 @@ trun::result<Clock>::convert() const
         res.mean_all = this->mean_all;
         res.sigma = this->sigma;
         res.sigma_all = this->sigma_all;
-        for (auto i=0; i<res.runs.size(); i++) {
+        for (size_t i=0; i<res.runs.size(); i++) {
             res.runs[i] = this->runs[i];
         }
     }
