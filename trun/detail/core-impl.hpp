@@ -367,7 +367,8 @@ void trun::detail::core::run(::trun::result<typename P::clock_type> & res, P & p
         result<C> res_curr = stats<msg, get_runs>(
             p, iterations-1, samples, outliers,
             std::forward<Fcb>(func_cbs)...);
-        auto width = res_curr.mean_all.count() * stddev_ratio;
+        // auto width = res_curr.mean.count() * stddev_ratio;
+        auto width_all = res_curr.mean_all.count() * stddev_ratio;
 
         trun::detail::message<trun::message::DEBUG, msg>(
             "mean=%f sigma=%f width=%f run_size=%lu run_size_all=%lu batch_size=%lu experiments=%lu",
@@ -379,7 +380,8 @@ void trun::detail::core::run(::trun::result<typename P::clock_type> & res, P & p
 
         // check if we're done
         {
-            bool match = res_curr.sigma.count() <= width;
+            bool match = // (res_curr.sigma.count() <= width) &&
+                (res_curr.sigma_all.count() <= width_all);
             // keep running if we were capped by batch size growth
             bool can_match = p.batch_size >= target_batch_size;
             res_curr.converged = match && can_match;
@@ -413,9 +415,9 @@ void trun::detail::core::run(::trun::result<typename P::clock_type> & res, P & p
         // keep timing overhead under control
         {
             // conservative mean for calculating batch
-            auto mean = res_curr.mean.count() - res_curr.sigma.count();
-            if (mean < 0) {
-                mean = res_curr.mean.count();
+            auto mean_all = res_curr.mean_all.count() - res_curr.sigma_all.count();
+            if (mean_all < 0) {
+                mean_all = res_curr.mean_all.count();
             }
             auto max_batch_size = p.batch_size * max_batch_size_multiplier;
             auto min_batch_size = p.batch_size / max_batch_size_multiplier;
@@ -434,7 +436,7 @@ void trun::detail::core::run(::trun::result<typename P::clock_type> & res, P & p
             auto max_run_size = p.run_size * max_run_size_multiplier;
             auto top_run_size = p.run_size * max_run_size_multiplier * 10;
             auto min_run_size = p.run_size / max_run_size_multiplier;
-            auto new_run_size = pow((2 * p.confidence_sigma * res_curr.sigma_all.count()) / width, 2);
+            auto new_run_size = pow((2 * p.confidence_sigma * res_curr.sigma_all.count()) / width_all, 2);
             if (new_run_size > max_run_size && iterations == 1) {
                 p.run_size = std::ceil(max_run_size);
             } else if (new_run_size < min_run_size && iterations > 1) {
