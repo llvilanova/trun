@@ -313,6 +313,8 @@ void trun::detail::core::run(::trun::result<typename P::clock_type> & res, P & p
 
     size_t experiments = 0;
     size_t iterations = 0;
+    // first iteration is never enough
+    double target_batch_size = std::numeric_limits<double>::max();
 
     // check if population is statistically significant
     auto significant = [&](const result<C>& current) {
@@ -378,7 +380,8 @@ void trun::detail::core::run(::trun::result<typename P::clock_type> & res, P & p
         // check if we're done
         {
             bool match = res_curr.sigma.count() <= width;
-            bool can_match = iterations >= 2;
+            // keep running if we were capped by batch size growth
+            bool can_match = p.batch_size >= target_batch_size;
             res_curr.converged = match && can_match;
             if (match && significant(res_curr)) {
                 res_best = res_curr;
@@ -416,13 +419,13 @@ void trun::detail::core::run(::trun::result<typename P::clock_type> & res, P & p
             }
             auto max_batch_size = p.batch_size * max_batch_size_multiplier;
             auto min_batch_size = p.batch_size / max_batch_size_multiplier;
-            auto new_batch_size = p.clock_time.count() / (mean * clock_overhead);
-            if (new_batch_size > max_batch_size && iterations == 1) {
+            target_batch_size = p.clock_time.count() / (mean_all * clock_overhead);
+            if (target_batch_size > max_batch_size && iterations == 1) {
                 p.batch_size = std::ceil(max_batch_size);
-            } else if (new_batch_size < min_batch_size && iterations > 1) {
+            } else if (target_batch_size < min_batch_size && iterations > 1) {
                 p.batch_size = std::ceil(min_batch_size);
-            } else if (new_batch_size > p.batch_size){
-                p.batch_size = std::ceil(new_batch_size);
+            } else if (target_batch_size > p.batch_size){
+                p.batch_size = std::ceil(target_batch_size);
             }
         }
 
