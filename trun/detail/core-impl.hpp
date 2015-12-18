@@ -339,6 +339,9 @@ void trun::detail::core::run(::trun::result<typename P::clock_type> & res, P & p
     while (true) {
         experiments += (p.run_size * p.batch_size);
         if (experiments >= p.max_experiments) {
+            trun::detail::message<trun::message::INFO, msg>(
+                "maximum number of experiments exceeded: %lu >= %lu",
+                experiments, p.max_experiments);
             break;
         }
 
