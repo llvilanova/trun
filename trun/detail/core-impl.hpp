@@ -412,8 +412,7 @@ void trun::detail::core::run(::trun::result<typename P::clock_type> & res, P & p
 
         // check if we're done
         {
-            bool match = // (res_curr.sigma.count() <= width) &&
-                (res_curr.sigma_all.count() <= width_all);
+            bool match = res_curr.sigma.count() <= width;
             // keep running if we were capped by batch size growth
             bool can_match = p.batch_size >= target_batch_size;
             res_curr.converged = match && can_match;
