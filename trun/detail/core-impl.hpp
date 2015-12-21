@@ -109,6 +109,21 @@ namespace trun {
             {
             }
 
+            static inline
+            typename result<trun::time::tsc_clock>::duration
+            to_time(const typename result<trun::time::tsc_cycles>::duration &dur)
+            {
+                return trun::time::tsc_cycles::time(dur);
+            }
+
+            template<class Clock>
+            static inline
+            typename result<Clock>::duration
+            to_time(const typename result<Clock>::duration &dur)
+            {
+                return dur;
+            }
+
             template<class C, class R, class F>
             static __attribute__((noinline))
             void loops_warmup(std::vector<R> & samples,
@@ -309,9 +324,10 @@ void trun::detail::core::run(::trun::result<typename P::clock_type> & res, P & p
     std::vector<rep_type> samples(p.run_size);
     std::vector<bool> outliers(p.run_size);
     result<C> res_best;
+    res_best.mean = duration_raw<C>(0);
     res_best.sigma = duration_raw<C>(std::numeric_limits<rep_type>::max());
+    res_best.converged = false;
 
-    size_t experiments = 0;
     size_t iterations = 0;
     // first iteration is never enough
     double target_batch_size = std::numeric_limits<double>::max();
@@ -334,16 +350,26 @@ void trun::detail::core::run(::trun::result<typename P::clock_type> & res, P & p
 
     trun::detail::message<trun::message::DEBUG, msg>(
         "clock_overhead_perc=%f confidence_sigma=%f stddev_perc=%f "
-        "warmup=%lu runs_size=%lu batch_size=%lu max_experiments=%lu",
+        "warmup=%lu runs_size=%lu batch_size=%lu experiment_timeout=%f",
         p.clock_overhead_perc, p.confidence_sigma, p.stddev_perc,
-        p.warmup_batch_size, p.run_size, p.batch_size, p.max_experiments);
+        p.warmup_batch_size, p.run_size, p.batch_size, p.experiment_timeout);
+
+    std::chrono::steady_clock::rep experiment_timeout_delta =
+        (p.experiment_timeout * std::chrono::steady_clock::period::den)
+        / std::chrono::steady_clock::period::num;
+    auto timeout_start = std::chrono::steady_clock::now();
 
     while (true) {
-        experiments += (p.run_size * p.batch_size);
-        if (experiments >= p.max_experiments) {
+        // try to calculate how much more it will take
+        auto timeout_now = std::chrono::steady_clock::now();
+        auto timeout_cur_delta = timeout_now - timeout_start;
+        auto experiment_delta = detail::core::to_time(res_best.mean) *
+            ((p.run_size * p.batch_size) + p.warmup_batch_size);
+        if ((timeout_cur_delta + experiment_delta).count() >= experiment_timeout_delta) {
             trun::detail::message<trun::message::INFO, msg>(
-                "maximum number of experiments exceeded: %lu >= %lu",
-                experiments, p.max_experiments);
+                "experiment timed out after %lu(+%lu) sec",
+                std::chrono::duration_cast<std::chrono::seconds>(timeout_cur_delta).count(),
+                std::chrono::duration_cast<std::chrono::seconds>(experiment_delta).count());
             break;
         }
 
@@ -367,13 +393,19 @@ void trun::detail::core::run(::trun::result<typename P::clock_type> & res, P & p
         result<C> res_curr = stats<msg, get_runs>(
             p, iterations-1, samples, outliers,
             std::forward<Fcb>(func_cbs)...);
-        // auto width = res_curr.mean.count() * stddev_ratio;
+        auto width = res_curr.mean.count() * stddev_ratio;
         auto width_all = res_curr.mean_all.count() * stddev_ratio;
 
-        trun::detail::message<trun::message::DEBUG, msg>(
-            "mean=%f sigma=%f width=%f run_size=%lu run_size_all=%lu batch_size=%lu experiments=%lu",
-            res_curr.mean.count(), res_curr.sigma.count(), width_all,
-            res_curr.run_size, res_curr.run_size_all, res_curr.batch_size, experiments);
+        if (msg >= trun::message::DEBUG) {
+            timeout_now = std::chrono::steady_clock::now();
+            timeout_cur_delta = timeout_now - timeout_start;
+            trun::detail::message<trun::message::DEBUG, msg>(
+                "mean=%f sigma=%f width=%f run_size=%lu run_size_all=%lu batch_size=%lu"
+                " experiment_delta=%lu",
+                res_curr.mean.count(), res_curr.sigma.count(), width,
+                res_curr.run_size, res_curr.run_size_all, res_curr.batch_size,
+                std::chrono::duration_cast<std::chrono::seconds>(timeout_cur_delta).count());
+        }
 
         // update 'clock_time' if we're in calibration mode
         update_clock_time<calibrating>(p, res_curr.mean);

@@ -74,7 +74,7 @@ namespace trun {
             clock_params.confidence_sigma = 3; // 99.73%
             clock_params.warmup_batch_size = 1000;
             clock_params.batch_size = 10000;
-            clock_params.max_experiments = 1000000000;
+            clock_params.experiment_timeout = 60;
             clock_params = calibrate<C, msg>(clock_params);
 
             res_params.clock_time = clock_params.clock_time;

@@ -81,7 +81,7 @@ namespace trun {
 #define TRUN_WARMUP_BATCH_SIZE 0
 #define TRUN_RUN_SIZE 30                // minimal statistical significance
 #define TRUN_BATCH_SIZE 1
-#define TRUN_MAX_EXPERIMENTS 1000000
+#define TRUN_EXPERIMENT_TIMEOUT 300
 
     // Run parameters.
     //
@@ -114,8 +114,8 @@ namespace trun {
     // @batch_size: initial number of iterations to batch together
     //     (default: TRUN_BATCH_SIZE)
     //     Every batch is timed separately to reduce clock overheads.
-    // @max_experiments: maximum number of experiments until non-convergence
-    //     (default: TRUN_MAX_EXPERIMENTS)
+    // @experiment_timeout: maximum running time (seconds) until experiment non-convergence
+    //     (default: TRUN_EXPERIMENT_TIMEOUT)
     template<class Clock>
     class parameters
     {
@@ -134,7 +134,7 @@ namespace trun {
         size_t run_size;
         size_t run_size_min_significance;
         size_t batch_size;
-        size_t max_experiments;
+        double experiment_timeout;
 
         // Return new parameters with units converted according to #ClockTarget.
         template<class ClockTarget>

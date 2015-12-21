@@ -71,7 +71,7 @@ trun::parameters<C>::parameters()
     ,run_size(TRUN_RUN_SIZE)
     ,run_size_min_significance(TRUN_RUN_SIZE)
     ,batch_size(TRUN_BATCH_SIZE)
-    ,max_experiments(TRUN_MAX_EXPERIMENTS)
+    ,experiment_timeout(TRUN_EXPERIMENT_TIMEOUT)
 {
 }
 
@@ -105,7 +105,7 @@ trun::parameters<Clock>::convert() const
     res.warmup_batch_size = this->warmup_batch_size;
     res.run_size = this->run_size;
     res.batch_size = this->batch_size;
-    res.max_experiments = this->max_experiments;
+    res.experiment_timeout = this->experiment_timeout;
     return res;
 }
 
