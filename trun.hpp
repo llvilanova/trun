@@ -1,6 +1,6 @@
 /** trun.hpp ---
  *
- * Copyright (C) 2015 Lluís Vilanova
+ * Copyright (C) 2015-2018 Lluís Vilanova
  *
  * Author: Lluís Vilanova <vilanova@ac.upc.edu>
  *
@@ -257,8 +257,7 @@ namespace trun {
     template<trun::message msg = trun::message::NONE, bool get_runs = false,
              class Clock, class Func, class... FuncCB>
     static
-    typename std::enable_if< sizeof...(FuncCB) == 0 || sizeof...(FuncCB) == 6,
-                             result<Clock> >::type
+    result<Clock>
     run(const parameters<Clock> & parameters, Func&& func,
         FuncCB&& ...func_cbs);
 
@@ -266,8 +265,7 @@ namespace trun {
     template<class Clock = ::trun::time::default_clock, trun::message msg = trun::message::NONE,
              bool get_runs = false, class Func, class... FuncCB>
     static
-    typename std::enable_if< sizeof...(FuncCB) == 0 || sizeof...(FuncCB) == 6,
-                             result<Clock> >::type
+    result<Clock>
     run(Func&& func, FuncCB&& ...func_cbs);
 
 

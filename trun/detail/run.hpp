@@ -1,6 +1,6 @@
 /** trun/detail/run.hpp ---
  *
- * Copyright (C) 2015 Lluís Vilanova
+ * Copyright (C) 2015-2018 Lluís Vilanova
  *
  * Author: Lluís Vilanova <vilanova@ac.upc.edu>
  *
@@ -31,10 +31,12 @@ namespace trun {
 
     template<trun::message msg, bool get_runs, class C, class F, class... Fcb>
     static inline
-    typename std::enable_if<(sizeof...(Fcb) == 0 || sizeof...(Fcb) == 6),
-                            result<C>>::type
+    result<C>
     run(const parameters<C> & params, F&& func, Fcb&&... func_cbs)
     {
+        static_assert(sizeof...(Fcb) == 0 or sizeof...(Fcb) == 6,
+                      "Invalid number of callbacks");
+
         if (std::is_same<C, ::trun::time::tsc_clock>::value) {
           // Use raw TSC cycles, and only convert to time at the end
           // parameters<::trun::time::tsc_cycles> params_2 = params.convert<::trun::time::tsc_cycles>();
@@ -63,10 +65,12 @@ namespace trun {
 
     template<class C, trun::message msg, bool get_runs, class F, class... Fcb>
     static inline
-    typename std::enable_if<(sizeof...(Fcb) == 0 || sizeof...(Fcb) == 6),
-                            result<C>>::type
+    result<C>
     run(F&& func, Fcb&&... func_cbs)
     {
+        static_assert(sizeof...(Fcb) == 0 or sizeof...(Fcb) == 6,
+                      "Invalid number of callbacks");
+
         auto params = time::calibrate<C, msg>();
         return run<msg, get_runs>(
             std::forward<parameters<C>>(params),
