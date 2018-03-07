@@ -29,13 +29,13 @@
 
 namespace trun {
 
-    template<trun::message msg, bool get_runs, class C, class F, class... Fcb>
+    template<trun::message msg, bool get_runs, class C, class F, class... Args>
     static inline
     result<C>
-    run(const parameters<C> & params, F&& func, Fcb&&... func_cbs)
+    run(const parameters<C> & params, F&& func, Args&&... args)
     {
-        static_assert(sizeof...(Fcb) == 0 or sizeof...(Fcb) == 6,
-                      "Invalid number of callbacks");
+        static_assert(std::is_same<decltype(func()), void>::value,
+                      "Argument func must return void");
 
         if (std::is_same<C, ::trun::time::tsc_clock>::value) {
           // Use raw TSC cycles, and only convert to time at the end
@@ -43,7 +43,7 @@ namespace trun {
           parameters<::trun::time::tsc_cycles> params_2 =
             params.template convert<::trun::time::tsc_cycles>();
           auto res = run<msg, get_runs>(
-              params_2, std::forward<F>(func), std::forward<Fcb>(func_cbs)...);
+              params_2, std::forward<F>(func), std::forward<Args>(args)...);
           return res.template convert<C>();
 
         } else {
@@ -57,25 +57,22 @@ namespace trun {
           detail::parameters::check(run_params);
           detail::message<message::INFO, msg>("Executing benchmark...");
           trun::detail::core::run<false, msg, get_runs>(
-            res, run_params, std::forward<F>(func), std::forward<Fcb>(func_cbs)...);
+            res, run_params, std::forward<F>(func), std::forward<Args>(args)...);
 
           return res;
         }
     }
 
-    template<class C, trun::message msg, bool get_runs, class F, class... Fcb>
+    template<class C, trun::message msg, bool get_runs, class F, class... Args>
     static inline
     result<C>
-    run(F&& func, Fcb&&... func_cbs)
+    run(F&& func, Args&&... args)
     {
-        static_assert(sizeof...(Fcb) == 0 or sizeof...(Fcb) == 6,
-                      "Invalid number of callbacks");
-
         auto params = time::calibrate<C, msg>();
         return run<msg, get_runs>(
             std::forward<parameters<C>>(params),
             std::forward<F>(func),
-            std::forward<Fcb>(func_cbs)...);
+            std::forward<Args>(args)...);
     }
 
 }

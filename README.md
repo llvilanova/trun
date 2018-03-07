@@ -82,22 +82,3 @@ to `trun::run`:
   or until 300 seconds have passed (and then assumes the experiment results do
   not converge). Can be changed through `trun::parameters::run_size_min_significance`
   and `trun::parameters::experiment_timeout`.
-
-
-## Tapping into experiment runs
-
-You can provide some functions that will be called at certain pre-defined points
-in the evaluation process:
-
-* Every time a set of experiments starts/stops (`func_iter_start` and
-  `func_iter_stop`).
-
-* Every time a run (batch of experiments) starts stops (`func_batch_start` and
-  `func_batch_stop`).
-
-* Every time a batch is selected as a non-outlier in a set of experiments
-  (`func_batch_seletct`).
-
-* Every time a set of experiments is selected as a candidate for the final
-  results (`func_iter_select`). Can be called multiple times in case the results
-  never converge.

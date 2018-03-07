@@ -1,6 +1,6 @@
 /** trun/detail/core.hpp ---
  *
- * Copyright (C) 2015 Lluís Vilanova
+ * Copyright (C) 2015-2018 Lluís Vilanova
  *
  * Author: Lluís Vilanova <vilanova@ac.upc.edu>
  *
@@ -32,60 +32,112 @@ namespace trun {
     namespace detail {
         namespace core {
 
-            template<int index, class... Fcb>
-            typename std::enable_if<std::tuple_size<std::tuple<Fcb...>>::value == 0,
+            template<class Target, class Arg>
+            typename std::enable_if<std::is_same<Target, Arg>::value,
                                     void>::type
-            func_call(const size_t& s1, const size_t& s2, const size_t& s3,
-                           Fcb&&... func_cbs)
+            hook_call2(size_t s1, size_t s2, size_t s3, void(*arg)(Arg, size_t, size_t, size_t))
             {
+                Target target;
+                arg(target, s1, s2, s3);
             }
 
-            template<int index, class... Fcb>
-            typename std::enable_if<(std::tuple_size<std::tuple<Fcb...>>::value > 0),
+            template<class Target, class Arg>
+            typename std::enable_if<not std::is_same<Target, Arg>::value,
                                     void>::type
-            func_call(const size_t& s1, const size_t& s2, const size_t& s3,
-                           Fcb&&... func_cbs)
+            hook_call2(size_t s1, size_t s2, size_t s3, void(*arg)(Arg, size_t, size_t, size_t))
             {
-                std::tuple<Fcb...> cbs(std::forward<Fcb>(func_cbs)...);
-                if (std::tuple_size<decltype(cbs)>::value >= (index+1)) {
-                    std::get<index>(cbs)(s1, s2, s3);
-                }
             }
 
-            template<class... F>
-            void func_iter_start(const size_t& s1, const size_t& s2, const size_t& s3, F&&... f)
+            template<class Target>
+            void
+            hook_call1(size_t s1, size_t s2, size_t s3, void(*arg)(hook_iter_start, size_t, size_t, size_t))
             {
-                func_call<0>(s1, s2, s3, std::forward<F>(f)...);
+                hook_call2<Target, hook_iter_start>(s1, s2, s3, arg);
             }
 
-            template<class... F>
-            void func_batch_start(const size_t& s1, const size_t& s2, const size_t& s3, F&&... f)
+            template<class Target>
+            void
+            hook_call1(size_t s1, size_t s2, size_t s3, void(*arg)(hook_iter_stop, size_t, size_t, size_t))
             {
-                func_call<1>(s1, s2, s3, std::forward<F>(f)...);
+                hook_call2<Target, hook_iter_stop>(s1, s2, s3, arg);
             }
 
-            template<class... F>
-            void func_batch_stop(const size_t& s1, const size_t& s2, const size_t& s3, F&&... f)
+            template<class Target>
+            void
+            hook_call1(size_t s1, size_t s2, size_t s3, void(*arg)(hook_iter_select, size_t, size_t, size_t))
             {
-                func_call<2>(s1, s2, s3, std::forward<F>(f)...);
+                hook_call2<Target, hook_iter_select>(s1, s2, s3, arg);
             }
 
-            template<class... F>
-            void func_iter_stop(const size_t& s1, const size_t& s2, const size_t& s3, F&&... f)
+            template<class Target>
+            void
+            hook_call1(size_t s1, size_t s2, size_t s3, void(*arg)(hook_run_start, size_t, size_t, size_t))
             {
-                func_call<3>(s1, s2, s3, std::forward<F>(f)...);
+                hook_call2<Target, hook_run_start>(s1, s2, s3, arg);
             }
 
-            template<class... F>
-            void func_batch_select(const size_t& s1, const size_t& s2, const size_t& s3, F&&... f)
+            template<class Target>
+            void
+            hook_call1(size_t s1, size_t s2, size_t s3, void(*arg)(hook_run_stop, size_t, size_t, size_t))
             {
-                func_call<4>(s1, s2, s3, std::forward<F>(f)...);
+                hook_call2<Target, hook_run_stop>(s1, s2, s3, arg);
             }
 
-            template<class... F>
-            void func_iter_select(const size_t& s1, const size_t& s2, const size_t& s3, F&&... f)
+            template<class Target>
+            void
+            hook_call1(size_t s1, size_t s2, size_t s3, void(*arg)(hook_run_select, size_t, size_t, size_t))
             {
-                func_call<5>(s1, s2, s3, std::forward<F>(f)...);
+                hook_call2<Target, hook_run_select>(s1, s2, s3, arg);
+            }
+
+            template<class Target>
+            void
+            hook_call(size_t s1, size_t s2, size_t s3)
+            {
+            }
+
+            template<class Target, class Arg, class... Args>
+            void
+            hook_call(size_t s1, size_t s2, size_t s3, Arg&& arg, Args&&... args)
+            {
+                hook_call1<Target>(s1, s2, s3, arg);
+                hook_call<Target, Args...>(s1, s2, s3, std::forward<Args>(args)...);
+            }
+
+            template<class... Args>
+            void func_iter_start(const size_t& s1, const size_t& s2, const size_t& s3, Args&&... args)
+            {
+                hook_call<trun::hook_iter_start>(s1, s2, s3, std::forward<Args>(args)...);
+            }
+
+            template<class... Args>
+            void func_run_start(const size_t& s1, const size_t& s2, const size_t& s3, Args&&... args)
+            {
+                hook_call<trun::hook_run_start>(s1, s2, s3, std::forward<Args>(args)...);
+            }
+
+            template<class... Args>
+            void func_run_stop(const size_t& s1, const size_t& s2, const size_t& s3, Args&&... args)
+            {
+                hook_call<trun::hook_run_stop>(s1, s2, s3, std::forward<Args>(args)...);
+            }
+
+            template<class... Args>
+            void func_iter_stop(const size_t& s1, const size_t& s2, const size_t& s3, Args&&... args)
+            {
+                hook_call<trun::hook_iter_stop>(s1, s2, s3, std::forward<Args>(args)...);
+            }
+
+            template<class... Args>
+            void func_run_select(const size_t& s1, const size_t& s2, const size_t& s3, Args&&... args)
+            {
+                hook_call<trun::hook_run_select>(s1, s2, s3, std::forward<Args>(args)...);
+            }
+
+            template<class... Args>
+            void func_iter_select(const size_t& s1, const size_t& s2, const size_t& s3, Args&&... args)
+            {
+                hook_call<trun::hook_iter_select>(s1, s2, s3, std::forward<Args>(args)...);
             }
 
             template<class C>
@@ -136,54 +188,54 @@ namespace trun {
                 }
             }
 
-            template<class C, class R, class F, class... Fcb>
+            template<class C, class R, class F, class... Args>
             static __attribute__((noinline))
             void loops_work(std::vector<R> & samples,
                             const size_t iteration,
                             const size_t warmup, const size_t run_size, const size_t batch_size,
-                            F&& func, Fcb&&... func_cbs)
+                            F&& func, Args&&... args)
             {
                 func_iter_start(iteration, run_size, batch_size,
-                                std::forward<Fcb>(func_cbs)...);
+                                std::forward<Args>(args)...);
 
                 for (size_t i = 0; i < run_size; i++) {
-                    func_batch_start(iteration, i, batch_size,
-                                     std::forward<Fcb>(func_cbs)...);
+                    func_run_start(iteration, i, batch_size,
+                                   std::forward<Args>(args)...);
                     auto start = C::now();
                     for (size_t j = 0; j < batch_size; j++) {
                         func();
                         asm volatile("" : : : "memory");
                     }
                     auto end = C::now();
-                    func_batch_stop(iteration, i, batch_size,
-                                    std::forward<Fcb>(func_cbs)...);
                     auto delta = end - start;
+                    func_run_stop(iteration, i, batch_size,
+                                  std::forward<Args>(args)...);
                     samples[i] = delta.count();
                 }
 
                 func_iter_stop(iteration, run_size, batch_size,
-                               std::forward<Fcb>(func_cbs)...);
+                               std::forward<Args>(args)...);
             }
 
-            template<class C, class R, class F, class... Fcb>
+            template<class C, class R, class F, class... Args>
             static inline
             void loops(std::vector<R> & samples, const size_t iteration,
                        const size_t warmup, const size_t run_size, const size_t batch_size,
-                       F&& func, Fcb&&... func_cbs)
+                       F&& func, Args&&... args)
             {
                 // NOTE: not inlined to allow more optimizations on each phase
                 loops_warmup<C>(samples, warmup, run_size, batch_size, std::forward<F>(func));
                 loops_work<C>(samples, iteration, warmup, run_size, batch_size,
-                              std::forward<F>(func), std::forward<Fcb>(func_cbs)...);
+                              std::forward<F>(func), std::forward<Args>(args)...);
             }
 
-            template<trun::message msg, bool get_runs, class Clock, class... Fcb>
+            template<trun::message msg, bool get_runs, class Clock, class... Args>
             static inline
             result<Clock> stats(const parameters<Clock> &params,
                                 const size_t iteration,
                                 std::vector<typename result<Clock>::duration::rep> &samples,
                                 std::vector<bool> &outliers,
-                                Fcb&&... func_cbs)
+                                Args&&... args)
             {
                 using rep_type = typename result<Clock>::duration::rep;
 
@@ -259,10 +311,10 @@ namespace trun {
                         continue;
                     }
 
-                    func_batch_select(iteration, i,
-                                      // is_outlier,
-                                      params.batch_size,
-                                      std::forward<Fcb>(func_cbs)...);
+                    func_run_select(iteration, i,
+                                    // is_outlier,
+                                    params.batch_size,
+                                    std::forward<Args>(args)...);
 
                     res.min = std::min(duration_raw<Clock>(elem), res.min);
                     res.max = std::max(duration_raw<Clock>(elem), res.max);
@@ -307,10 +359,10 @@ namespace trun {
 // Stops when:
 //   stddev <= mean * (stddev_perc / 100)  --> mean
 //   total runs >= max_experiments         --> mean with lowest sigma
-template<bool calibrating, trun::message msg, bool get_runs, class P, class F, class... Fcb>
+template<bool calibrating, trun::message msg, bool get_runs, class P, class F, class... Args>
 static inline
 void trun::detail::core::run(::trun::result<typename P::clock_type> & res, P & params,
-                             F&& func, Fcb&&... func_cbs)
+                             F&& func, Args&&... args)
 {
     using C = typename P::clock_type;
     using rep_type = typename result<C>::duration::rep;
@@ -386,13 +438,13 @@ void trun::detail::core::run(::trun::result<typename P::clock_type> & res, P & p
             }
         }
         loops<C>(samples, iterations, p.warmup_batch_size, p.run_size, p.batch_size,
-                 std::forward<F>(func), std::forward<Fcb>(func_cbs)...);
+                 std::forward<F>(func), std::forward<Args>(args)...);
         iterations++;
 
         // calculate statistics
         result<C> res_curr = stats<msg, get_runs>(
             p, iterations-1, samples, outliers,
-            std::forward<Fcb>(func_cbs)...);
+            std::forward<Args>(args)...);
         auto width = res_curr.mean.count() * stddev_ratio;
         auto width_all = res_curr.mean_all.count() * stddev_ratio;
 
@@ -420,7 +472,7 @@ void trun::detail::core::run(::trun::result<typename P::clock_type> & res, P & p
                 res_best = res_curr;
                 topple_runs(res_best, samples, outliers);
                 func_iter_select(iterations-1, p.run_size, p.batch_size,
-                                 std::forward<Fcb>(func_cbs)...);
+                                 std::forward<Args>(args)...);
                 if (can_match) {
                     break;
                 }
@@ -433,7 +485,7 @@ void trun::detail::core::run(::trun::result<typename P::clock_type> & res, P & p
                     res_best = res_curr;
                     topple_runs(res_best, samples, outliers);
                     func_iter_select(iterations-1, p.run_size, p.batch_size,
-                                     std::forward<Fcb>(func_cbs)...);
+                                     std::forward<Args>(args)...);
                 }
             }
         }

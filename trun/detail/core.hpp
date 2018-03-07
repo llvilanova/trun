@@ -1,6 +1,6 @@
 /** trun/detail/core.hpp ---
  *
- * Copyright (C) 2015 Lluís Vilanova
+ * Copyright (C) 2015-2018 Lluís Vilanova
  *
  * Author: Lluís Vilanova <vilanova@ac.upc.edu>
  *
@@ -26,9 +26,9 @@ namespace trun {
         namespace core {
 
             template<bool calibrating, trun::message msg, bool get_runs, class P,
-                     class F, class... Fcb>
+                     class F, class... Args>
             static inline
-            void run(result<typename P::clock_type> & res, P & params, F&& func, Fcb&&... func_cbs);
+            void run(result<typename P::clock_type> & res, P & params, F&& func, Args&&... args);
 
         }
     }

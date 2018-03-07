@@ -205,6 +205,40 @@ namespace trun {
 
     }
 
+    // Run hook arguments
+
+    // hook_fn(hook_iter_start, size_t iter, size_t run_size, size_t batch_size)
+    //
+    // Signal start of an iteration (outermost loop: all runs + batches)
+    class hook_iter_start {};
+
+    // hook_fn(hook_iter_stop, size_t iter, size_t run_size, size_t batch_size)
+    //
+    // Signal stop of an iteration (outermost loop: all runs + batches).
+    class hook_iter_stop {};
+
+    // hook_fn(hook_iter_start, size_t iter, size_t run_size, size_t batch_size)
+    //
+    // Signal selection of an iteration as candidate for final result.  The last
+    // iteration selected corresponds to the final results.  Argument #run_size
+    // does not include outliers.
+    class hook_iter_select {};
+
+    // hook_fn(hook_run_start, size_t iter, size_t run, size_t batch_size)
+    //
+    // Signal start of a run (one batch).
+    class hook_run_start {};
+
+    // hook_fn(hook_run_stop, size_t iter, size_t run, size_t batch_size)
+    //
+    // Signal stop of a run (one batch).
+    class hook_run_stop {};
+
+    // hook_fn(hook_run_select, size_t iter, size_t run, size_t batch_size)
+    //
+    // Signal selection of a run as a non-outlier.
+    class hook_run_select {};
+
     // Time the experiment 'func()'.
     //
     // You can use a functor or a lambda to invoke functions with arguments:
@@ -235,38 +269,22 @@ namespace trun {
     // If template argument @get_runs is used, the result will contain elements
     // in #result<Clock>.runs.
     //
-    // You can provide the 'func_*' arguments to gather additional statistics on
-    // each batch. See above for their meaning. The timing results do not
-    // include the calls to these functions.
-    //
-    // This function accepts 6 optional callbacks (all arguments are size_t):
-    //
-    // - (0) func_iter_start  (iter, run_size, batch_size)
-    // - (1) func_batch_start (iter, run     , batch_size)
-    // - (2) func_batch_stop  (iter, run     , batch_size)
-    // - (3) func_iter_stop   (iter, run_size, batch_size)
-    // - (4) func_batch_select(iter, run     , batch_size)
-    // - (5) func_iter_select (iter, run_size, batch_size)
-    //
-    // - 0,3: Signal start/stop of an iteration (outermost loop: all runs + batches)
-    // - 1,2: Signal start/stop of a run (one batch)
-    // - 4  : Signal selection of a batch as a non-outlier
-    // - 5  : Signal selection of an iteration as candidate for final result.
-    //        The last iteration selected corresponds to the final results.
-    //        Argument #run_size does not include outliers.
+    // You can pass functions that accept a trun::hook_* object above to gather
+    // additional statistics. See above for their meaning. The timing results do
+    // not include calls to these functions.
     template<trun::message msg = trun::message::NONE, bool get_runs = false,
-             class Clock, class Func, class... FuncCB>
+             class Clock, class Func, class... Args>
     static
     result<Clock>
     run(const parameters<Clock> & parameters, Func&& func,
-        FuncCB&& ...func_cbs);
+        Args&& ...args);
 
     // Same with default parameters
     template<class Clock = ::trun::time::default_clock, trun::message msg = trun::message::NONE,
-             bool get_runs = false, class Func, class... FuncCB>
+             bool get_runs = false, class Func, class... Args>
     static
     result<Clock>
-    run(Func&& func, FuncCB&& ...func_cbs);
+    run(Func&& func, Args&& ...args);
 
 
     // Dump results.
