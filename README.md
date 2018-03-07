@@ -33,28 +33,33 @@ to `trun::run`:
     trun::dump::csv(results);
 </pre>
 
+
 ## Properties of experiment results
 
 * Runs `experiment` until the results match the expected statistical
   significance (they converge):
 
   <pre>
+  size_t iter = 0;
   while (not converged) {
+      size_t num_runs = ... dynamic ...;
+      size_t batch_size = ... dynamic ...;
       // warmup system
-      for(int warmup_batch_idx = 0; warmup_batch_idx < warmup_batch_size; warmup_batch_idx++) {
+      for(size_t warmup_batch_idx = 0; warmup_batch_idx < warmup_batch_size; warmup_batch_idx++) {
           experiment();
       }
       // start set of experiments
-      for (int run = 0; run < num_runs; run++) {
+      for (size_t run = 0; run < num_runs; run++) {
           // start batch
           auto batch_start = time();
-          for(int batch_idx = 0; batch_idx < batch_size; batch_idx++) {
+          for(size_t batch_idx = 0; batch_idx < batch_size; batch_idx++) {
               experiment();
           }
           auto batch_end = time();
           auto time = (batch_end - batch_start) / batch_size;
       }
       // ... calculate statistics ...
+      iter++;
   }
   </pre>
 

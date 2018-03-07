@@ -101,7 +101,7 @@ namespace trun {
     // @stddev_perc: target standard deviation
     //     (default: TRUN_STDDEV_PERC)
     //     The value is set in terms of a percentage of the mean.
-    // @warmup_batch_size: number of experiments before every round
+    // @warmup_batch_size: number of experiments before every iteration
     //     (default: TRUN_WARMUP_BATCH_SIZE)
     // @run_size: minimum number of runs
     //     (default: TRUN_RUN_SIZE)
@@ -111,7 +111,7 @@ namespace trun {
     //     (default: TRUN_RUN_SIZE)
     //     Experiments with less than this number of non-outlier results will be
     //     discarded.
-    // @batch_size: initial number of iterations to batch together
+    // @batch_size: initial number of experiments to batch together; dynamically adapted
     //     (default: TRUN_BATCH_SIZE)
     //     Every batch is timed separately to reduce clock overheads.
     // @experiment_timeout: maximum running time (seconds) until experiment non-convergence
