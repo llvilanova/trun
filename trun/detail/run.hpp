@@ -29,7 +29,7 @@
 
 namespace trun {
 
-    template<trun::message msg, bool get_runs, class C, class F, class... Args>
+    template<trun::message msg, class C, class F, class... Args>
     static inline
     result<C>
     run(const parameters<C> & params, F&& func, Args&&... args)
@@ -42,7 +42,7 @@ namespace trun {
           // parameters<::trun::time::tsc_cycles> params_2 = params.convert<::trun::time::tsc_cycles>();
           parameters<::trun::time::tsc_cycles> params_2 =
             params.template convert<::trun::time::tsc_cycles>();
-          auto res = run<msg, get_runs>(
+          auto res = run<msg>(
               params_2, std::forward<F>(func), std::forward<Args>(args)...);
           return res.template convert<C>();
 
@@ -56,20 +56,20 @@ namespace trun {
           ::trun::time::detail::check(C());
           detail::parameters::check(run_params);
           detail::message<message::INFO, msg>("Executing benchmark...");
-          trun::detail::core::run<false, msg, get_runs>(
+          trun::detail::core::run<false, msg>(
             res, run_params, std::forward<F>(func), std::forward<Args>(args)...);
 
           return res;
         }
     }
 
-    template<class C, trun::message msg, bool get_runs, class F, class... Args>
+    template<class C, trun::message msg, class F, class... Args>
     static inline
     result<C>
     run(F&& func, Args&&... args)
     {
         auto params = time::calibrate<C, msg>();
-        return run<msg, get_runs>(
+        return run<msg>(
             std::forward<parameters<C>>(params),
             std::forward<F>(func),
             std::forward<Args>(args)...);

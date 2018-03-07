@@ -32,6 +32,25 @@ namespace trun {
     namespace detail {
         namespace core {
 
+            template<class Target, class... Args>
+            struct has_mod;
+
+            template<class Target>
+            struct has_mod<Target> {
+                static const bool value = false;
+            };
+
+            template<class Target, class Arg, class... Args>
+            struct has_mod<Target, Arg, Args...> {
+                static const bool value = std::is_same<
+                    Target, typename std::remove_reference<Arg>::type>::value or
+                    has_mod<Target, Args...>::value;
+            };
+
+            template<class... Args>
+            struct has_get_runs : public has_mod<trun::mod_get_runs_type, Args...> {};
+
+
             template<class Target, class Arg>
             typename std::enable_if<std::is_same<Target, Arg>::value,
                                     void>::type
@@ -88,6 +107,13 @@ namespace trun {
             hook_call1(size_t s1, size_t s2, size_t s3, void(*arg)(hook_run_select, size_t, size_t, size_t))
             {
                 hook_call2<Target, hook_run_select>(s1, s2, s3, arg);
+            }
+
+            template<class Target>
+            void
+            hook_call1(size_t s1, size_t s2, size_t s3, mod_get_runs_type _)
+            {
+                (void)_;
             }
 
             template<class Target>
@@ -229,7 +255,7 @@ namespace trun {
                               std::forward<F>(func), std::forward<Args>(args)...);
             }
 
-            template<trun::message msg, bool get_runs, class Clock, class... Args>
+            template<trun::message msg, class Clock, class... Args>
             static inline
             result<Clock> stats(const parameters<Clock> &params,
                                 const size_t iteration,
@@ -300,7 +326,7 @@ namespace trun {
                 for (size_t i = 0; i < params.run_size; i++) {
                     auto elem = samples[i];
                     bool is_outlier = std::abs(elem - mean) > outlier;
-                    if (get_runs) {
+                    if (detail::core::has_get_runs<Args...>::value) {
                         outliers[i] = is_outlier;
                     }
                     trun::detail::message<trun::message::DEBUG_VERBOSE, msg>(
@@ -359,7 +385,7 @@ namespace trun {
 // Stops when:
 //   stddev <= mean * (stddev_perc / 100)  --> mean
 //   total runs >= max_experiments         --> mean with lowest sigma
-template<bool calibrating, trun::message msg, bool get_runs, class P, class F, class... Args>
+template<bool calibrating, trun::message msg, class P, class F, class... Args>
 static inline
 void trun::detail::core::run(::trun::result<typename P::clock_type> & res, P & params,
                              F&& func, Args&&... args)
@@ -392,7 +418,7 @@ void trun::detail::core::run(::trun::result<typename P::clock_type> & res, P & p
     auto topple_runs = [](result<C>& dest,
                           const std::vector<double>& src_samples,
                           const std::vector<bool>& src_outliers) {
-        if (get_runs) {
+        if (detail::core::has_get_runs<Args...>::value) {
             dest.runs.resize(dest.run_size_all);
             for (size_t i = 0; i < dest.run_size_all; i++) {
                 dest.runs[i] = std::make_tuple(duration_raw<C>(src_samples[i]), src_outliers[i]);
@@ -428,12 +454,12 @@ void trun::detail::core::run(::trun::result<typename P::clock_type> & res, P & p
         // run experiment batches
         if (samples.size() < p.run_size) {
             samples.resize(p.run_size);
-            if (get_runs) {
+            if (detail::core::has_get_runs<Args...>::value) {
                 outliers.resize(p.run_size);
             }
         } else if (samples.size() > p.run_size * 2) {
             samples.resize(p.run_size * 2);
-            if (get_runs) {
+            if (detail::core::has_get_runs<Args...>::value) {
                 outliers.resize(p.run_size * 2);
             }
         }
@@ -442,7 +468,7 @@ void trun::detail::core::run(::trun::result<typename P::clock_type> & res, P & p
         iterations++;
 
         // calculate statistics
-        result<C> res_curr = stats<msg, get_runs>(
+        result<C> res_curr = stats<msg>(
             p, iterations-1, samples, outliers,
             std::forward<Args>(args)...);
         auto width = res_curr.mean.count() * stddev_ratio;

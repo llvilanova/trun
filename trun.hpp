@@ -60,7 +60,7 @@ namespace trun {
 
         // Mean experiment duration of each run (boolean identifies outliers)
         //
-        // Has contents only when @get_runs is used in trun().
+        // Has contents only when #mod_get_runs is used in trun().
         std::vector< std::tuple<duration, bool> > runs;
 
         // Scale this results down (divide) by the given factor.
@@ -205,6 +205,7 @@ namespace trun {
 
     }
 
+
     // Run hook arguments
 
     // hook_fn(hook_iter_start, size_t iter, size_t run_size, size_t batch_size)
@@ -239,6 +240,14 @@ namespace trun {
     // Signal selection of a run as a non-outlier.
     class hook_run_select {};
 
+
+    // Run modifier arguments
+
+    // Fill in the elements in #result<Clock>.runs (default is not to do it).
+    class mod_get_runs_type {};
+    mod_get_runs_type mod_get_runs;
+
+
     // Time the experiment 'func()'.
     //
     // You can use a functor or a lambda to invoke functions with arguments:
@@ -266,14 +275,14 @@ namespace trun {
     // If results do not converge (#parameters.max_experiments is reached),
     // return the mean with lowest standard deviation found so far.
     //
-    // If template argument @get_runs is used, the result will contain elements
-    // in #result<Clock>.runs.
-    //
     // You can pass functions that accept a trun::hook_* object above to gather
     // additional statistics. See above for their meaning. The timing results do
     // not include calls to these functions.
-    template<trun::message msg = trun::message::NONE, bool get_runs = false,
-             class Clock, class Func, class... Args>
+    //
+    // You can pass the objects in trun::mod_* to modify the bahavior of
+    // trun::run(). See above for their meaning.
+    template<trun::message msg = trun::message::NONE, class Clock,
+             class Func, class... Args>
     static
     result<Clock>
     run(const parameters<Clock> & parameters, Func&& func,
@@ -281,7 +290,7 @@ namespace trun {
 
     // Same with default parameters
     template<class Clock = ::trun::time::default_clock, trun::message msg = trun::message::NONE,
-             bool get_runs = false, class Func, class... Args>
+             class Func, class... Args>
     static
     result<Clock>
     run(Func&& func, Args&& ...args);
