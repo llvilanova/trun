@@ -247,6 +247,32 @@ namespace trun {
     class mod_get_runs_type {};
     mod_get_runs_type mod_get_runs;
 
+    // Assume @func runs an entire batch and returns its timing.
+    //
+    // Useful to time child processes, kernel module functions, etc. where your
+    // function can use an arbitrary mechanism to retrieve time.
+    //
+    // A regular run() to time func() is equivalent to passing func_batch():
+    //
+    //   template<class Clock>
+    //   result<Clock>::duration func_batch(size_t iter, size_t run, size_t batch_size)
+    //   {
+    //       auto start = Clock::now();
+    //       for (size_t i = 0; i < batch_size; i++) {
+    //           func();
+    //           asm volatile("" : : : "memory");
+    //       }
+    //       auto end = clock::now();
+    //       return end - start;
+    //   }
+    //
+    //   int main(int argc, char *argv[])
+    //   {
+    //       trun::run(func_batch, trun::mod_clock);
+    //   {
+    class mod_clock_type {};
+    mod_clock_type mod_clock;
+
 
     // Time the experiment 'func()'.
     //

@@ -87,3 +87,12 @@ to `trun::run`:
   or until 300 seconds have passed (and then assumes the experiment results do
   not converge). Can be changed through `trun::parameters::run_size_min_significance`
   and `trun::parameters::experiment_timeout`.
+
+
+## Advanced usage
+
+You can time more complex experiments by passing the object trun::mod_clock to
+trun::run(). In this case, it is up to your function to calculate the execution
+time of an experment batch.
+
+This can be handy when timing external programs, kernel functions, etc.

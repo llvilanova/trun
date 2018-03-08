@@ -50,6 +50,9 @@ namespace trun {
             template<class... Args>
             struct has_get_runs : public has_mod<trun::mod_get_runs_type, Args...> {};
 
+            template<class... Args>
+            struct has_clock : public has_mod<trun::mod_clock_type, Args...> {};
+
 
             template<class Target, class Arg>
             typename std::enable_if<std::is_same<Target, Arg>::value,
@@ -118,6 +121,13 @@ namespace trun {
 
             template<class Target>
             void
+            hook_call1(size_t s1, size_t s2, size_t s3, mod_clock_type _)
+            {
+                (void)_;
+            }
+
+            template<class Target>
+            void
             hook_call(size_t s1, size_t s2, size_t s3)
             {
             }
@@ -166,6 +176,30 @@ namespace trun {
                 hook_call<trun::hook_iter_select>(s1, s2, s3, std::forward<Args>(args)...);
             }
 
+
+            template<class Clock, class Func, class... Args>
+            typename std::enable_if<has_clock<Args...>::value,
+                                    typename result<Clock>::duration>::type
+            func_call(Func&& func, size_t iteration, size_t run, size_t batch_size)
+            {
+                return func(iteration, run, batch_size);
+            }
+
+            template<class Clock, class Func, class... Args>
+            typename std::enable_if<not has_clock<Args...>::value,
+                                    typename result<Clock>::duration>::type
+            func_call(Func&& func, size_t iteration, size_t run, size_t batch_size)
+            {
+                auto start = Clock::now();
+                for (size_t i = 0; i < batch_size; i++) {
+                    func();
+                    asm volatile("" : : : "memory");
+                }
+                auto end = Clock::now();
+                return end - start;
+            }
+
+
             template<class C>
             static inline
             typename result<C>::duration duration_raw(const typename result<C>::duration::rep & value) {
@@ -202,18 +236,6 @@ namespace trun {
                 return dur;
             }
 
-            template<class C, class R, class F>
-            static __attribute__((noinline))
-            void loops_warmup(std::vector<R> & samples,
-                              const size_t warmup, const size_t run_size, const size_t batch_size,
-                              F&& func)
-            {
-                for (size_t i = 0; i < warmup; i++) {
-                    func();
-                    asm volatile("" : : : "memory");
-                }
-            }
-
             template<class C, class R, class F, class... Args>
             static __attribute__((noinline))
             void loops_work(std::vector<R> & samples,
@@ -224,19 +246,14 @@ namespace trun {
                 func_iter_start(iteration, run_size, batch_size,
                                 std::forward<Args>(args)...);
 
-                for (size_t i = 0; i < run_size; i++) {
-                    func_run_start(iteration, i, batch_size,
+                for (size_t run = 0; run < run_size; run++) {
+                    func_run_start(iteration, run, batch_size,
                                    std::forward<Args>(args)...);
-                    auto start = C::now();
-                    for (size_t j = 0; j < batch_size; j++) {
-                        func();
-                        asm volatile("" : : : "memory");
-                    }
-                    auto end = C::now();
-                    auto delta = end - start;
-                    func_run_stop(iteration, i, batch_size,
+                    auto delta = detail::core::func_call<C, F, Args...>(
+                        std::forward<F>(func), iteration, run, batch_size);
+                    func_run_stop(iteration, run, batch_size,
                                   std::forward<Args>(args)...);
-                    samples[i] = delta.count();
+                    samples[run] = delta.count();
                 }
 
                 func_iter_stop(iteration, run_size, batch_size,
@@ -250,7 +267,8 @@ namespace trun {
                        F&& func, Args&&... args)
             {
                 // NOTE: not inlined to allow more optimizations on each phase
-                loops_warmup<C>(samples, warmup, run_size, batch_size, std::forward<F>(func));
+                (void)detail::core::func_call<C, F, Args...>(
+                    std::forward<F>(func), 0, 0, warmup);
                 loops_work<C>(samples, iteration, warmup, run_size, batch_size,
                               std::forward<F>(func), std::forward<Args>(args)...);
             }

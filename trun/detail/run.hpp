@@ -34,9 +34,6 @@ namespace trun {
     result<C>
     run(const parameters<C> & params, F&& func, Args&&... args)
     {
-        static_assert(std::is_same<decltype(func()), void>::value,
-                      "Argument func must return void");
-
         if (std::is_same<C, ::trun::time::tsc_clock>::value) {
           // Use raw TSC cycles, and only convert to time at the end
           // parameters<::trun::time::tsc_cycles> params_2 = params.convert<::trun::time::tsc_cycles>();
