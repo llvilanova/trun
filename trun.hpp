@@ -78,7 +78,8 @@ namespace trun {
 #define TRUN_CONFIDENCE_SIGMA 2         // 2 * sigma -> 95.45%
 #define TRUN_CONFIDENCE_OUTLIER_SIGMA 4 // 4 * sigma -> 99.99%
 #define TRUN_STDDEV_PERC 1              // 1% of the mean
-#define TRUN_WARMUP_BATCH_SIZE 0
+#define TRUN_ITERATION_WARMUP_BATCH_SIZE 0
+#define TRUN_RUN_WARMUP_BATCH_SIZE 0
 #define TRUN_RUN_SIZE 30                // minimal statistical significance
 #define TRUN_BATCH_SIZE 1
 #define TRUN_EXPERIMENT_TIMEOUT 300
@@ -101,8 +102,10 @@ namespace trun {
     // @stddev_perc: target standard deviation
     //     (default: TRUN_STDDEV_PERC)
     //     The value is set in terms of a percentage of the mean.
-    // @warmup_batch_size: number of experiments before every iteration
-    //     (default: TRUN_WARMUP_BATCH_SIZE)
+    // @iteration_warmup_batch_size: number of warmup experiments before every iteration
+    //     (default: TRUN_ITERATION_WARMUP_BATCH_SIZE)
+    // @run_warmup_batch_size: number of warmup experiments on each run
+    //     (default: TRUN_RUN_WARMUP_BATCH_SIZE)
     // @run_size: minimum number of runs
     //     (default: TRUN_RUN_SIZE)
     //     Statistics are calculated across runs. At least this number of
@@ -130,7 +133,8 @@ namespace trun {
         double confidence_outlier_sigma;
         double stddev_perc;
 
-        size_t warmup_batch_size;
+        size_t iteration_warmup_batch_size;
+        size_t run_warmup_batch_size;
         size_t run_size;
         size_t run_size_min_significance;
         size_t batch_size;
@@ -249,14 +253,21 @@ namespace trun {
 
     // Assume @func runs an entire batch and returns its timing.
     //
-    // Useful to time child processes, kernel module functions, etc. where your
-    // function can use an arbitrary mechanism to retrieve time.
+    // Useful to time functions in child processes, kernel module functions,
+    // etc. where externally timing a call to the function includes code we do
+    // not want to include in the timing result.
     //
-    // A regular run() to time func() is equivalent to passing func_batch():
+    // A regular run() to time func() is equivalent to passing func_run():
     //
     //   template<class Clock>
-    //   result<Clock>::duration func_batch(size_t iter, size_t run, size_t batch_size)
+    //   result<Clock>::duration func_run(size_t iter, size_t run,
+    //                                    size_t run_warmup_batch_size,
+    //                                    size_t batch_size)
     //   {
+    //       for (size_t i = 0; i < run_warmup_batch_size; i++) {
+    //           func();
+    //           asm volatile("" : : : "memory");
+    //       }
     //       auto start = Clock::now();
     //       for (size_t i = 0; i < batch_size; i++) {
     //           func();
@@ -268,7 +279,7 @@ namespace trun {
     //
     //   int main(int argc, char *argv[])
     //   {
-    //       trun::run(func_batch, trun::mod_clock);
+    //       trun::run(func_run, trun::mod_clock);
     //   {
     class mod_clock_type {};
     mod_clock_type mod_clock;

@@ -1,6 +1,6 @@
 /** trun/detail/parameters.hpp ---
  *
- * Copyright (C) 2015 Lluís Vilanova
+ * Copyright (C) 2015-2018 Lluís Vilanova
  *
  * Author: Lluís Vilanova <vilanova@ac.upc.edu>
  *
@@ -67,7 +67,8 @@ trun::parameters<C>::parameters()
     ,confidence_sigma(TRUN_CONFIDENCE_SIGMA)
     ,confidence_outlier_sigma(TRUN_CONFIDENCE_OUTLIER_SIGMA)
     ,stddev_perc(TRUN_STDDEV_PERC)
-    ,warmup_batch_size(TRUN_WARMUP_BATCH_SIZE)
+    ,iteration_warmup_batch_size(TRUN_ITERATION_WARMUP_BATCH_SIZE)
+    ,run_warmup_batch_size(TRUN_RUN_WARMUP_BATCH_SIZE)
     ,run_size(TRUN_RUN_SIZE)
     ,run_size_min_significance(TRUN_RUN_SIZE)
     ,batch_size(TRUN_BATCH_SIZE)
@@ -102,7 +103,8 @@ trun::parameters<Clock>::convert() const
     res.confidence_sigma = this->confidence_sigma;
     res.confidence_outlier_sigma = this->confidence_outlier_sigma;
     res.stddev_perc = this->stddev_perc;
-    res.warmup_batch_size = this->warmup_batch_size;
+    res.iteration_warmup_batch_size = this->iteration_warmup_batch_size;
+    res.run_warmup_batch_size = this->run_warmup_batch_size;
     res.run_size = this->run_size;
     res.batch_size = this->batch_size;
     res.experiment_timeout = this->experiment_timeout;

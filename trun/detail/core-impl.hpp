@@ -180,15 +180,15 @@ namespace trun {
             template<class Clock, class Func, class... Args>
             typename std::enable_if<has_clock<Args...>::value,
                                     typename result<Clock>::duration>::type
-            func_call(Func&& func, size_t iteration, size_t run, size_t batch_size)
+            func_call(Func&& func, size_t iteration, size_t run, size_t warmup, size_t batch_size)
             {
-                return func(iteration, run, batch_size);
+                return func(iteration, run, warmup, batch_size);
             }
 
             template<class Clock, class Func, class... Args>
             typename std::enable_if<not has_clock<Args...>::value,
                                     typename result<Clock>::duration>::type
-            func_call(Func&& func, size_t iteration, size_t run, size_t batch_size)
+            func_call(Func&& func, size_t iteration, size_t run, size_t warmup, size_t batch_size)
             {
                 auto start = Clock::now();
                 for (size_t i = 0; i < batch_size; i++) {
@@ -237,12 +237,16 @@ namespace trun {
             }
 
             template<class C, class R, class F, class... Args>
-            static __attribute__((noinline))
-            void loops_work(std::vector<R> & samples,
-                            const size_t iteration,
-                            const size_t warmup, const size_t run_size, const size_t batch_size,
-                            F&& func, Args&&... args)
+            static inline
+            void loops(std::vector<R> & samples, const size_t iteration,
+                       const size_t iteration_warmup, const size_t run_warmup,
+                       const size_t run_size, const size_t batch_size,
+                       F&& func, Args&&... args)
             {
+                // NOTE: not inlined to allow more optimizations on each phase
+                (void)detail::core::func_call<C, F, Args...>(
+                    std::forward<F>(func), 0, 0, iteration_warmup, 0);
+
                 func_iter_start(iteration, run_size, batch_size,
                                 std::forward<Args>(args)...);
 
@@ -250,7 +254,7 @@ namespace trun {
                     func_run_start(iteration, run, batch_size,
                                    std::forward<Args>(args)...);
                     auto delta = detail::core::func_call<C, F, Args...>(
-                        std::forward<F>(func), iteration, run, batch_size);
+                        std::forward<F>(func), iteration, run, run_warmup, batch_size);
                     func_run_stop(iteration, run, batch_size,
                                   std::forward<Args>(args)...);
                     samples[run] = delta.count();
@@ -258,19 +262,6 @@ namespace trun {
 
                 func_iter_stop(iteration, run_size, batch_size,
                                std::forward<Args>(args)...);
-            }
-
-            template<class C, class R, class F, class... Args>
-            static inline
-            void loops(std::vector<R> & samples, const size_t iteration,
-                       const size_t warmup, const size_t run_size, const size_t batch_size,
-                       F&& func, Args&&... args)
-            {
-                // NOTE: not inlined to allow more optimizations on each phase
-                (void)detail::core::func_call<C, F, Args...>(
-                    std::forward<F>(func), 0, 0, warmup);
-                loops_work<C>(samples, iteration, warmup, run_size, batch_size,
-                              std::forward<F>(func), std::forward<Args>(args)...);
             }
 
             template<trun::message msg, class Clock, class... Args>
@@ -446,9 +437,10 @@ void trun::detail::core::run(::trun::result<typename P::clock_type> & res, P & p
 
     trun::detail::message<trun::message::DEBUG, msg>(
         "clock_overhead_perc=%f confidence_sigma=%f stddev_perc=%f "
-        "warmup=%lu runs_size=%lu batch_size=%lu experiment_timeout=%f",
+        "i_warmup=%lu r_warmup=%lu runs_size=%lu batch_size=%lu experiment_timeout=%f",
         p.clock_overhead_perc, p.confidence_sigma, p.stddev_perc,
-        p.warmup_batch_size, p.run_size, p.batch_size, p.experiment_timeout);
+        p.iteration_warmup_batch_size, p.run_warmup_batch_size,
+        p.run_size, p.batch_size, p.experiment_timeout);
 
     std::chrono::steady_clock::rep experiment_timeout_delta =
         (p.experiment_timeout * std::chrono::steady_clock::period::den)
@@ -460,7 +452,7 @@ void trun::detail::core::run(::trun::result<typename P::clock_type> & res, P & p
         auto timeout_now = std::chrono::steady_clock::now();
         auto timeout_cur_delta = timeout_now - timeout_start;
         auto experiment_delta = detail::core::to_time(res_best.mean) *
-            ((p.run_size * p.batch_size) + p.warmup_batch_size);
+            ((p.run_size * (p.run_warmup_batch_size + p.batch_size)) + p.iteration_warmup_batch_size);
         if ((timeout_cur_delta + experiment_delta).count() >= experiment_timeout_delta) {
             trun::detail::message<trun::message::INFO, msg>(
                 "experiment timed out after %lu(+%lu) sec",
@@ -481,7 +473,8 @@ void trun::detail::core::run(::trun::result<typename P::clock_type> & res, P & p
                 outliers.resize(p.run_size * 2);
             }
         }
-        loops<C>(samples, iterations, p.warmup_batch_size, p.run_size, p.batch_size,
+        loops<C>(samples, iterations, p.iteration_warmup_batch_size, p.run_warmup_batch_size,
+                 p.run_size, p.batch_size,
                  std::forward<F>(func), std::forward<Args>(args)...);
         iterations++;
 
