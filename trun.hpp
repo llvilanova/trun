@@ -146,6 +146,9 @@ namespace trun {
     };
 
 
+    // See below.
+    class mod_clock_type;
+
     // Manage time.
     namespace time {
 
@@ -162,6 +165,19 @@ namespace trun {
         template<class Clock, trun::message msg = trun::message::NONE>
         static
         parameters<Clock> calibrate(const trun::parameters<Clock> & parameters);
+
+        // Calibrate clock overheads.
+        //
+        // See run() with #trun::mod_clock below.
+        template<class Clock, trun::message msg = trun::message::NONE, class Func>
+        static
+        parameters<Clock> calibrate(Func&& func, trun::mod_clock_type &mod_clock);
+
+        // Calibrate clock overheads.
+        template<class Clock, trun::message msg = trun::message::NONE, class Func>
+        static
+        parameters<Clock> calibrate(const trun::parameters<Clock> & parameters,
+                                    Func&& func, trun::mod_clock_type &mod_clock);
 
         // Get the units name for a given clock and ratio.
         //

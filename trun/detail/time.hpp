@@ -1,6 +1,6 @@
 /** trun/detail/time.hpp ---
  *
- * Copyright (C) 2015 Lluís Vilanova
+ * Copyright (C) 2015-2018 Lluís Vilanova
  *
  * Author: Lluís Vilanova <vilanova@ac.upc.edu>
  *
@@ -75,6 +75,27 @@ namespace trun {
             return std::move(res_params);
         }
 
+        template<class C, trun::message msg, class F>
+        static inline
+        parameters<C> calibrate(const parameters<C> & params, F&& func, trun::mod_clock_type &mod_clock)
+        {
+            // initialize parameters
+            parameters<C> res_params = params;
+            res_params.clock_time = typename C::duration(typename C::rep(0));
+            trun::detail::parameters::check(res_params);
+
+            trun::detail::message<trun::message::INFO, msg>("Calibrating clock overheads...");
+            result<C> res;
+            trun::detail::core::run<true, msg>(res, params, func, mod_clock);
+            if (!res.converged) {
+                errx(1, "[trun] clock calibration did not converge");
+            }
+
+            res_params.clock_time = res.mean;
+
+            return std::move(res_params);
+        }
+
         template<class C, trun::message msg>
         static inline
         parameters<C> calibrate()
@@ -83,8 +104,20 @@ namespace trun {
             clock_params = calibrate<C, msg>(clock_params);
 
             parameters<C> res_params;
+            res_params.clock_time = clock_params.clock_time;
+            return std::move(res_params);
+        }
 
+        template<class C, trun::message msg, class F>
+        static inline
+        parameters<C> calibrate(F&& func, trun::mod_clock_type &mod_clock)
+        {
+            parameters<C> clock_params = detail::get_clock_params<C>();
+            clock_params.run_warmup_batch_size = clock_params.iteration_warmup_batch_size;
+            clock_params.iteration_warmup_batch_size = 0;
+            clock_params = calibrate<C, msg>(clock_params, std::forward<F>(func), mod_clock);
 
+            parameters<C> res_params;
             res_params.clock_time = clock_params.clock_time;
             return std::move(res_params);
         }
