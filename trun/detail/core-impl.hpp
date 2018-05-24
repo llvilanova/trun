@@ -190,6 +190,10 @@ namespace trun {
                                     typename result<Clock>::duration>::type
             func_call(Func&& func, size_t iteration, size_t run, size_t warmup, size_t batch_size)
             {
+                for (size_t i = 0; i < warmup; i++) {
+                    func();
+                    asm volatile("" : : : "memory");
+                }
                 auto start = Clock::now();
                 for (size_t i = 0; i < batch_size; i++) {
                     func();
