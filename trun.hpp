@@ -226,41 +226,6 @@ namespace trun {
     }
 
 
-    // Run hook arguments
-
-    // hook_fn(hook_iter_start, size_t iter, size_t run_size, size_t batch_size)
-    //
-    // Signal start of an iteration (outermost loop: all runs + batches)
-    class hook_iter_start {};
-
-    // hook_fn(hook_iter_stop, size_t iter, size_t run_size, size_t batch_size)
-    //
-    // Signal stop of an iteration (outermost loop: all runs + batches).
-    class hook_iter_stop {};
-
-    // hook_fn(hook_iter_start, size_t iter, size_t run_size, size_t batch_size)
-    //
-    // Signal selection of an iteration as candidate for final result.  The last
-    // iteration selected corresponds to the final results.  Argument #run_size
-    // does not include outliers.
-    class hook_iter_select {};
-
-    // hook_fn(hook_run_start, size_t iter, size_t run, size_t batch_size)
-    //
-    // Signal start of a run (one batch).
-    class hook_run_start {};
-
-    // hook_fn(hook_run_stop, size_t iter, size_t run, size_t batch_size)
-    //
-    // Signal stop of a run (one batch).
-    class hook_run_stop {};
-
-    // hook_fn(hook_run_select, size_t iter, size_t run, size_t batch_size)
-    //
-    // Signal selection of a run as a non-outlier.
-    class hook_run_select {};
-
-
     // Run modifier arguments
 
     // Fill in the elements in #result<Clock>.runs (default is not to do it).
@@ -328,9 +293,6 @@ namespace trun {
     // If results do not converge (#parameters.max_experiments is reached),
     // return the mean with lowest standard deviation found so far.
     //
-    // You can pass functions that accept a trun::hook_* object above to gather
-    // additional statistics. See above for their meaning. The timing results do
-    // not include calls to these functions.
     //
     // You can pass the objects in trun::mod_* to modify the bahavior of
     // trun::run(). See above for their meaning.

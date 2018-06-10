@@ -54,129 +54,6 @@ namespace trun {
             struct has_clock : public has_mod<trun::mod_clock_type, Args...> {};
 
 
-            template<class Target, class Arg>
-            typename std::enable_if<std::is_same<Target, Arg>::value,
-                                    void>::type
-            hook_call2(size_t s1, size_t s2, size_t s3, void(*arg)(Arg, size_t, size_t, size_t))
-            {
-                Target target;
-                arg(target, s1, s2, s3);
-            }
-
-            template<class Target, class Arg>
-            typename std::enable_if<not std::is_same<Target, Arg>::value,
-                                    void>::type
-            hook_call2(size_t s1, size_t s2, size_t s3, void(*arg)(Arg, size_t, size_t, size_t))
-            {
-            }
-
-            template<class Target>
-            void
-            hook_call1(size_t s1, size_t s2, size_t s3, void(*arg)(hook_iter_start, size_t, size_t, size_t))
-            {
-                hook_call2<Target, hook_iter_start>(s1, s2, s3, arg);
-            }
-
-            template<class Target>
-            void
-            hook_call1(size_t s1, size_t s2, size_t s3, void(*arg)(hook_iter_stop, size_t, size_t, size_t))
-            {
-                hook_call2<Target, hook_iter_stop>(s1, s2, s3, arg);
-            }
-
-            template<class Target>
-            void
-            hook_call1(size_t s1, size_t s2, size_t s3, void(*arg)(hook_iter_select, size_t, size_t, size_t))
-            {
-                hook_call2<Target, hook_iter_select>(s1, s2, s3, arg);
-            }
-
-            template<class Target>
-            void
-            hook_call1(size_t s1, size_t s2, size_t s3, void(*arg)(hook_run_start, size_t, size_t, size_t))
-            {
-                hook_call2<Target, hook_run_start>(s1, s2, s3, arg);
-            }
-
-            template<class Target>
-            void
-            hook_call1(size_t s1, size_t s2, size_t s3, void(*arg)(hook_run_stop, size_t, size_t, size_t))
-            {
-                hook_call2<Target, hook_run_stop>(s1, s2, s3, arg);
-            }
-
-            template<class Target>
-            void
-            hook_call1(size_t s1, size_t s2, size_t s3, void(*arg)(hook_run_select, size_t, size_t, size_t))
-            {
-                hook_call2<Target, hook_run_select>(s1, s2, s3, arg);
-            }
-
-            template<class Target>
-            void
-            hook_call1(size_t s1, size_t s2, size_t s3, mod_get_runs_type _)
-            {
-                (void)_;
-            }
-
-            template<class Target>
-            void
-            hook_call1(size_t s1, size_t s2, size_t s3, mod_clock_type _)
-            {
-                (void)_;
-            }
-
-            template<class Target>
-            void
-            hook_call(size_t s1, size_t s2, size_t s3)
-            {
-            }
-
-            template<class Target, class Arg, class... Args>
-            void
-            hook_call(size_t s1, size_t s2, size_t s3, Arg&& arg, Args&&... args)
-            {
-                hook_call1<Target>(s1, s2, s3, arg);
-                hook_call<Target, Args...>(s1, s2, s3, std::forward<Args>(args)...);
-            }
-
-            template<class... Args>
-            void func_iter_start(const size_t& s1, const size_t& s2, const size_t& s3, Args&&... args)
-            {
-                hook_call<trun::hook_iter_start>(s1, s2, s3, std::forward<Args>(args)...);
-            }
-
-            template<class... Args>
-            void func_run_start(const size_t& s1, const size_t& s2, const size_t& s3, Args&&... args)
-            {
-                hook_call<trun::hook_run_start>(s1, s2, s3, std::forward<Args>(args)...);
-            }
-
-            template<class... Args>
-            void func_run_stop(const size_t& s1, const size_t& s2, const size_t& s3, Args&&... args)
-            {
-                hook_call<trun::hook_run_stop>(s1, s2, s3, std::forward<Args>(args)...);
-            }
-
-            template<class... Args>
-            void func_iter_stop(const size_t& s1, const size_t& s2, const size_t& s3, Args&&... args)
-            {
-                hook_call<trun::hook_iter_stop>(s1, s2, s3, std::forward<Args>(args)...);
-            }
-
-            template<class... Args>
-            void func_run_select(const size_t& s1, const size_t& s2, const size_t& s3, Args&&... args)
-            {
-                hook_call<trun::hook_run_select>(s1, s2, s3, std::forward<Args>(args)...);
-            }
-
-            template<class... Args>
-            void func_iter_select(const size_t& s1, const size_t& s2, const size_t& s3, Args&&... args)
-            {
-                hook_call<trun::hook_iter_select>(s1, s2, s3, std::forward<Args>(args)...);
-            }
-
-
             template<class Clock, class Func, class... Args>
             typename std::enable_if<has_clock<Args...>::value,
                                     typename result<Clock>::duration>::type
@@ -251,21 +128,11 @@ namespace trun {
                 (void)detail::core::func_call<C, F, Args...>(
                     std::forward<F>(func), 0, 0, iteration_warmup, 0);
 
-                func_iter_start(iteration, run_size, batch_size,
-                                std::forward<Args>(args)...);
-
                 for (size_t run = 0; run < run_size; run++) {
-                    func_run_start(iteration, run, batch_size,
-                                   std::forward<Args>(args)...);
                     auto delta = detail::core::func_call<C, F, Args...>(
                         std::forward<F>(func), iteration, run, run_warmup, batch_size);
-                    func_run_stop(iteration, run, batch_size,
-                                  std::forward<Args>(args)...);
                     samples[run] = delta.count();
                 }
-
-                func_iter_stop(iteration, run_size, batch_size,
-                               std::forward<Args>(args)...);
             }
 
             template<trun::message msg, class Clock, class... Args>
@@ -349,11 +216,6 @@ namespace trun {
                     if (is_outlier) {
                         continue;
                     }
-
-                    func_run_select(iteration, i,
-                                    // is_outlier,
-                                    params.batch_size,
-                                    std::forward<Args>(args)...);
 
                     res.min = std::min(duration_raw<Clock>(elem), res.min);
                     res.max = std::max(duration_raw<Clock>(elem), res.max);
@@ -512,8 +374,6 @@ void trun::detail::core::run(::trun::result<typename P::clock_type> & res, P & p
             if (match && significant(res_curr)) {
                 res_best = res_curr;
                 topple_runs(res_best, samples, outliers);
-                func_iter_select(iterations-1, p.run_size, p.batch_size,
-                                 std::forward<Args>(args)...);
                 if (can_match) {
                     break;
                 }
@@ -525,8 +385,6 @@ void trun::detail::core::run(::trun::result<typename P::clock_type> & res, P & p
                      iterations <= 1)) {
                     res_best = res_curr;
                     topple_runs(res_best, samples, outliers);
-                    func_iter_select(iterations-1, p.run_size, p.batch_size,
-                                     std::forward<Args>(args)...);
                 }
             }
         }
