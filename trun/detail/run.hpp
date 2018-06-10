@@ -45,7 +45,7 @@ namespace trun {
         } else {
           parameters<C> run_params = params;
           if (params.clock_time.count() == 0) {
-              run_params = time::calibrate<C, msg>(params);
+              run_params = time::calibrate<C, msg>();
           }
 
           ::trun::time::detail::check(C());
@@ -64,7 +64,7 @@ namespace trun {
     run(F&& func, Args&&... args)
     {
         auto params = time::calibrate<C, msg>();
-        return run<msg>(
+        return run<false, msg, C, F>(
             std::forward<parameters<C>>(params),
             std::forward<F>(func),
             std::forward<Args>(args)...);
