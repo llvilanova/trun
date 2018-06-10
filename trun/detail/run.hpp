@@ -36,15 +36,13 @@ namespace trun {
     {
         if (std::is_same<C, ::trun::time::tsc_clock>::value) {
           // Use raw TSC cycles, and only convert to time at the end
-          // parameters<::trun::time::tsc_cycles> params_2 = params.convert<::trun::time::tsc_cycles>();
           parameters<::trun::time::tsc_cycles> params_2 =
             params.template convert<::trun::time::tsc_cycles>();
-          auto res = run<msg>(
+          auto res = trun::detail::core::run<false, msg>(
               params_2, std::forward<F>(func), std::forward<Args>(args)...);
           return res.template convert<C>();
 
         } else {
-          result<C> res;
           parameters<C> run_params = params;
           if (params.clock_time.count() == 0) {
               run_params = time::calibrate<C, msg>(params);
@@ -53,8 +51,8 @@ namespace trun {
           ::trun::time::detail::check(C());
           detail::parameters::check(run_params);
           detail::message<message::INFO, msg>("Executing benchmark...");
-          trun::detail::core::run<false, msg>(
-            res, run_params, std::forward<F>(func), std::forward<Args>(args)...);
+          auto res = trun::detail::core::run<false, msg, C, F, Args...>(
+              run_params, std::forward<F>(func), std::forward<Args>(args)...);
 
           return res;
         }

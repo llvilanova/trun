@@ -260,10 +260,9 @@ namespace trun {
 // Stops when:
 //   stddev <= mean * (stddev_perc / 100)  --> mean
 //   total runs >= max_experiments         --> mean with lowest sigma
-template<bool calibrating, trun::message msg, class P, class F, class... Args>
+template<bool calibrating, trun::message msg, class C, class F, class... Args>
 static inline
-void trun::detail::core::run(::trun::result<typename P::clock_type> & res, P & params,
-                             F&& func, Args&&... args)
+trun::result<C> trun::detail::core::run(trun::parameters<C> params, F&& func, Args&&... args)
 {
     using C = typename P::clock_type;
     using rep_type = typename result<C>::duration::rep;

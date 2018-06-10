@@ -64,8 +64,7 @@ namespace trun {
                 auto t2 = C::now();
                 (void)t2;
             };
-            result<C> res;
-            trun::detail::core::run<true, msg>(res, params, time);
+            auto res = trun::detail::core::run<true, msg, C>(params, time);
             if (!res.converged) {
                 errx(1, "[trun] clock calibration did not converge");
             }
@@ -85,8 +84,7 @@ namespace trun {
             trun::detail::parameters::check(res_params);
 
             trun::detail::message<trun::message::INFO, msg>("Calibrating clock overheads...");
-            result<C> res;
-            trun::detail::core::run<true, msg>(res, params, func, mod_clock);
+            auto res = trun::detail::core::run<true, msg, C>(params, func, mod_clock);
             if (!res.converged) {
                 errx(1, "[trun] clock calibration did not converge");
             }
