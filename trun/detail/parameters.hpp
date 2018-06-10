@@ -120,7 +120,6 @@ trun::parameters<Clock>::get_clock_params()
 {
     parameters<Clock> params;
     params.stddev_perc = 2;
-    params.confidence_sigma = 3;        // 99.73%
     params.warmup_batch_group_size = 1000;
     params.batch_group_size = 30;
     params.warmup_batch_size = 1000;
