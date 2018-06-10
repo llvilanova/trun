@@ -40,39 +40,43 @@ to `trun::run`:
   significance (they converge):
 
   <pre>
-  size_t iter = 0;
   while (not converged) {
-      size_t num_runs = ... dynamic ...;
+      size_t batch_group_size = ... dynamic ...;
       size_t batch_size = ... dynamic ...;
       // warmup system
-      for(size_t warmup_batch_idx = 0; warmup_batch_idx < warmup_batch_size; warmup_batch_idx++) {
+      for(size_t i = 0; i < warmup_batch_group_size; i++) {
           experiment();
       }
-      // start set of experiments
-      for (size_t run = 0; run < num_runs; run++) {
-          // start batch
+      // start a group of experiment batches
+      for (size_t i = 0; i < batch_group_size; i++) {
+          // warmup batch
+          for(size_t j = 0; j < warmup_batch_size; j++) {
+              experiment();
+          }
+          // time batch
           auto batch_start = time();
-          for(size_t batch_idx = 0; batch_idx < batch_size; batch_idx++) {
+          for(size_t j = 0; j < batch_size; j++) {
               experiment();
           }
           auto batch_end = time();
           auto time = (batch_end - batch_start) / batch_size;
       }
       // ... calculate statistics ...
-      iter++;
   }
   </pre>
 
 * Uses `std::chrono::steady_clock` to measure execution time. Can be changed
   through the `Clock` template parameter.
 
-* Runs `experiment` 30 times before each set of experiments to warm the system
-  up. Can be changed through `trun::parameters::warmup_batch_size`.
+* Runs `experiment` multiple times before each set of timed experiments to warm
+  the system up. Can be changed through
+  `trun::parameters::warmup_batch_group_size` and
+  `trun::parameters::warmup_batch_size`.
 
 * Calls to `experiment` are measured in batches to ensure the overhead of the
   selected clock is within 0.1% of the mean (the batch size is calculated
-  dynamically, but starts at 30). Can be changed though
-  `trun::parameters::run_size` and `trun::parameters::clock_overhead_perc`.
+  dynamically). Can be changed though `trun::parameters::batch_size` and
+  `trun::parameters::clock_overhead_perc`.
 
 * Assumes the time to execute `experiment` follows a gaussian distribution, and
   discards measurement outliers with 99.99% confidence. Can be changed through
@@ -83,10 +87,11 @@ to `trun::run`:
   confidence. Can be changed through `trun::parameters::stddev_perc` and
   `trun::parameters::confidence_sigma`.
 
-* Keeps running batches of experiments until 30 runs meet the selected criteria,
-  or until 300 seconds have passed (and then assumes the experiment results do
-  not converge). Can be changed through `trun::parameters::run_size_min_significance`
-  and `trun::parameters::experiment_timeout`.
+* Keeps running the experiment until the measurements meet the selected
+  criteria, or until 300 seconds have passed (and then assumes the experiment
+  results do not converge). Can be changed through
+  `trun::parameters::batch_group_min_size` and
+  `trun::parameters::experiment_timeout`.
 
 
 ## Advanced usage

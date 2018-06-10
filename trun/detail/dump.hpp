@@ -1,6 +1,6 @@
 /** trun/detail/dump.hpp ---
  *
- * Copyright (C) 2015 Lluís Vilanova
+ * Copyright (C) 2015-2018 Lluís Vilanova
  *
  * Author: Lluís Vilanova <vilanova@ac.upc.edu>
  *
@@ -36,8 +36,8 @@ namespace trun {
                  bool show_header, bool force_converged)
         {
             if (force_converged && !results.converged) {
-                errx(1, "[trun] Results did not converge (tried %lu runs on batches of %lu)",
-                     results.run_size_all, results.batch_size);
+                errx(1, "[trun] Results did not converge (tried %lu batches)",
+                     results.batches_all);
             }
 
             if (show_header) {
@@ -51,15 +51,14 @@ namespace trun {
             one(results.sigma);
             one(results.min);
             one(results.max);
-            output << results.run_size << ","
-                   << results.batch_size << ","
+            output << results.batches << ","
                    << results.converged << ",";
 
             one(results.mean_all);
             one(results.sigma_all);
             one(results.min_all);
             one(results.max_all);
-            output << results.run_size_all << "\n";
+            output << results.batches_all << "\n";
         }
 
         template<class Ratio = std::nano, class Clock>
@@ -68,8 +67,8 @@ namespace trun {
                         bool show_header, bool force_converged)
         {
             if (force_converged && !results.converged) {
-                errx(1, "[trun] Results did not converge (tried %lu runs on batches of %lu)",
-                     results.run_size_all, results.batch_size);
+                errx(1, "[trun] Results did not converge (tried %lu batches)",
+                     results.batches_all);
             }
 
             if (!show_header) {
@@ -81,12 +80,12 @@ namespace trun {
                    << "sigma(" << units << "),"
                    << "min(" << units << "),"
                    << "max(" << units << "),"
-                   << "run_size,batch_size,converged,"
+                   << "batches,converged,"
                    << "mean_all(" << units << "),"
                    << "sigma_all(" << units << "),"
                    << "min_all(" << units << "),"
                    << "max_all(" << units << "),"
-                   << "run_size_all\n";
+                   << "batches_all\n";
         }
 
         template<class Ratio = std::nano, class Clock>
@@ -95,8 +94,8 @@ namespace trun {
                       bool show_header, bool force_converged)
         {
             if (force_converged && !results.converged) {
-                errx(1, "[trun] Results did not converge (tried %lu runs on batches of %lu)",
-                     results.run_size_all, results.batch_size);
+                errx(1, "[trun] Results did not converge (tried %lu batches)",
+                     results.batches_all);
             }
 
             if (show_header) {
@@ -105,11 +104,9 @@ namespace trun {
             }
 
             for (size_t i = 0; i < results.runs.size(); i++) {
-                auto elem = results.runs[i];
-                auto time = std::get<0>(elem);
-                auto outlier = std::get<1>(elem);
-                output << int(outlier)
-                       << "," << std::chrono::duration<double, Ratio>(time).count()
+                auto batch = results.runs[i];
+                output << int(batch.outlier)
+                       << "," << std::chrono::duration<double, Ratio>(batch.time).count()
                        << "\n";
             }
         }

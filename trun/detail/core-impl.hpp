@@ -57,17 +57,17 @@ namespace trun {
             template<class Clock, class Func, class... Args>
             typename std::enable_if<has_clock<Args...>::value,
                                     typename result<Clock>::duration>::type
-            func_call(Func&& func, size_t iteration, size_t run, size_t warmup, size_t batch_size)
+            func_call(Func&& func, size_t batch_group, size_t warmup_batch_size, size_t batch_size)
             {
-                return func(iteration, run, warmup, batch_size);
+                return func(batch_group, warmup_batch_size, batch_size);
             }
 
             template<class Clock, class Func, class... Args>
             typename std::enable_if<not has_clock<Args...>::value,
                                     typename result<Clock>::duration>::type
-            func_call(Func&& func, size_t iteration, size_t run, size_t warmup, size_t batch_size)
+            func_call(Func&& func, size_t batch_group, size_t warmup_batch_size, size_t batch_size)
             {
-                for (size_t i = 0; i < warmup; i++) {
+                for (size_t i = 0; i < warmup_batch_size; i++) {
                     func();
                     asm volatile("" : : : "memory");
                 }
@@ -87,149 +87,117 @@ namespace trun {
                 return typename result<C>::duration(value);
             }
 
-            template<bool calibrating, class P>
+            template<bool calibrating, class C>
             static inline
             typename std::enable_if<calibrating, void>::type
-            update_clock_time(P & params, const typename result<typename P::clock_type>::duration & time)
+            update_clock_time(trun::parameters<C> &params, typename result<C>::duration::rep time)
             {
-                params.clock_time = time;
+                params.clock_time = duration_raw<C>(time);
             }
 
-            template<bool calibrating, class P>
+            template<bool calibrating, class C>
             static inline
             typename std::enable_if<!calibrating, void>::type
-            update_clock_time(P &, const typename result<typename P::clock_type>::duration &)
+            update_clock_time(trun::parameters<C> &params, typename result<C>::duration::rep _)
             {
             }
 
-            static inline
-            typename result<trun::time::tsc_clock>::duration
-            to_time(const typename result<trun::time::tsc_cycles>::duration &dur)
-            {
-                return trun::time::tsc_cycles::time(dur);
-            }
-
-            template<class Clock>
-            static inline
-            typename result<Clock>::duration
-            to_time(const typename result<Clock>::duration &dur)
-            {
-                return dur;
-            }
-
-            template<class C, class R, class F, class... Args>
-            static inline
-            void loops(std::vector<R> & samples, const size_t iteration,
-                       const size_t iteration_warmup, const size_t run_warmup,
-                       const size_t run_size, const size_t batch_size,
-                       F&& func, Args&&... args)
-            {
-                // NOTE: not inlined to allow more optimizations on each phase
-                (void)detail::core::func_call<C, F, Args...>(
-                    std::forward<F>(func), 0, 0, iteration_warmup, 0);
-
-                for (size_t run = 0; run < run_size; run++) {
-                    auto delta = detail::core::func_call<C, F, Args...>(
-                        std::forward<F>(func), iteration, run, run_warmup, batch_size);
-                    samples[run] = delta.count();
-                }
-            }
-
-            template<trun::message msg, class Clock, class... Args>
-            static inline
-            result<Clock> stats(const parameters<Clock> &params,
-                                const size_t iteration,
-                                std::vector<typename result<Clock>::duration::rep> &samples,
-                                std::vector<bool> &outliers,
-                                Args&&... args)
+            template <trun::message msg, class Clock, class... Args>
+            struct batch_group_stats
             {
                 using rep_type = typename result<Clock>::duration::rep;
+                size_t count, count_all;
+                std::vector<rep_type> samples;
+                std::vector<bool> outliers;
+                rep_type mean, mean_all;
+                rep_type sigma, sigma_all;
+                rep_type min, min_all;
+                rep_type max, max_all;
 
-                result<Clock> res;
-                res.min = res.min_all = duration_raw<Clock>(
-                    std::numeric_limits<rep_type>::max());
-                res.max = res.max_all = duration_raw<Clock>(
-                    std::numeric_limits<rep_type>::min());
-                res.run_size = 0;
-                res.run_size_all = params.run_size;
-                res.batch_size = params.batch_size;
-
-                // Calculate statistics using Welford's method
-                // (also appears in TAOCP, vol. 2)
-                rep_type m, m_prev=0, s=0, s_prev=0;
-                auto add_elem = [&](const size_t i, const rep_type elem) {
-                    if (i==0) {
-                        m_prev = m = elem;
-                        s_prev = 0;
-                    } else {
-                        m = m_prev + (elem - m_prev)/(i+1);
-                        s = s_prev + (elem - m_prev) * (elem - m);
-                        m_prev = m;
-                        s_prev = s;
-                    }
-                };
-                auto get_mean = [&](size_t size) {
-                    if (size > 1) {
-                        return m;
-                    } else {
-                        return 0.0;
-                    }
-                };
-                auto get_sigma = [&](size_t size) {
-                    if (size > 0) {
-                        auto variance = s / (size - 1);
-                        return sqrt(variance);
-                    } else {
-                        return 0.0;
-                    }
-                };
-
-                // statistics for all samples
-                for (size_t i = 0; i < params.run_size; i++) {
-                    // normalize to per-experiment results
-                    auto elem = samples[i];
-		    elem = elem / params.batch_size;
-		    samples[i] = elem;
-
-                    res.min_all = std::min(duration_raw<Clock>(elem), res.min_all);
-                    res.max_all = std::max(duration_raw<Clock>(elem), res.max_all);
-                    add_elem(i, elem);
-                }
-
-                rep_type mean = get_mean(res.run_size_all);
-                rep_type sigma = get_sigma(res.run_size_all);
-                res.mean_all = duration_raw<Clock>(mean);
-                res.sigma_all = duration_raw<Clock>(sigma);
-                rep_type outlier = params.confidence_outlier_sigma * sigma;
-
-                // statistics for non-outliers
-                for (size_t i = 0; i < params.run_size; i++) {
-                    auto elem = samples[i];
-                    bool is_outlier = std::abs(elem - mean) > outlier;
-                    if (detail::core::has_get_runs<Args...>::value) {
-                        outliers[i] = is_outlier;
-                    }
-                    trun::detail::message<trun::message::DEBUG_VERBOSE, msg>(
-                        "value=%f outlier=%d", elem, is_outlier);
-
-                    // ignore outliers
-                    if (is_outlier) {
-                        continue;
+                void resize(size_t batch_group_size, bool keep_results)
+                    {
+                        count = count_all = 0;
+                        if (samples.size() < batch_group_size) {
+                            samples.resize(batch_group_size);
+                            if (keep_results) {
+                                outliers.resize(batch_group_size);
+                            }
+                        } else if (samples.size() > batch_group_size * 2) {
+                            samples.resize(batch_group_size * 2);
+                            if (keep_results) {
+                                outliers.resize(batch_group_size * 2);
+                            }
+                        }
                     }
 
-                    res.min = std::min(duration_raw<Clock>(elem), res.min);
-                    res.max = std::max(duration_raw<Clock>(elem), res.max);
-                    add_elem(res.run_size, elem);
-                    res.run_size++;
-                }
+                void add(rep_type elem)
+                    {
+                        samples[count_all] = elem;
+                        count_all++;
+                    }
 
-                mean = get_mean(res.run_size);
-                sigma = get_sigma(res.run_size);
-                res.mean = duration_raw<Clock>(mean);
-                res.sigma = duration_raw<Clock>(sigma);
 
-                return std::move(res);
-            }
+                void calculate(const trun::parameters<Clock> &params)
+                    {
+                        rep_type mean_cur = 0, mean_prev = 0, sigma_cur = 0, sigma_prev = 0;
+                        rep_type min_cur = 0, max_cur = 0;
+
+                        auto add_one = [&](size_t idx, rep_type elem) {
+                            if (idx == 0) {
+                                mean_cur = mean_prev = elem;
+                                sigma_cur = sigma_prev = 0;
+                                min_cur = max_cur = elem;
+                            } else {
+                                mean_cur = mean_prev + (elem - mean_prev) / (idx + 1);
+                                sigma_cur = sigma_prev + (elem - mean_prev) * (elem - mean_cur);
+                                mean_prev = mean_cur;
+                                sigma_prev = sigma_cur;
+                                min_cur = std::min(elem, min_cur);
+                                max_cur = std::max(elem, max_cur);
+                            }
+                        };
+
+                        for (size_t i = 0; i < count_all; i++) {
+                            auto elem = samples[i];
+                            elem = elem / params.batch_size;
+                            samples[i] = elem;
+                            add_one(i, elem);
+                        }
+                        mean_all = mean_cur;
+                        if (sigma_cur != 0) {
+                            auto variance_all = sigma_cur / (count_all - 1);
+                            sigma_all = sqrt(variance_all);
+                        }
+                        min_all = min_cur;
+                        max_all = max_cur;
+
+                        rep_type outlier = params.confidence_outlier_sigma * sigma_all;
+                        for (size_t i = 0; i < count_all; i++) {
+                            auto elem = samples[i];
+                            bool is_outlier = std::abs(elem - mean_all) > outlier;
+                            if (detail::core::has_get_runs<Args...>::value) {
+                                outliers[i] = is_outlier;
+                            }
+                            trun::detail::message<trun::message::DEBUG_VERBOSE, msg>(
+                                "value=%f outlier=%d", elem, is_outlier);
+
+                            // ignore outliers
+                            if (is_outlier) {
+                                continue;
+                            }
+
+                            add_one(count, elem);
+                            count++;
+                        }
+                        mean = mean_cur;
+                        if (sigma_cur != 0) {
+                            auto variance = sigma_cur / (count - 1);
+                            sigma = sqrt(variance);
+                        }
+                        min = min_cur;
+                        max = max_cur;
+                    }
+            };
 
         }
     }
@@ -237,203 +205,175 @@ namespace trun {
 
 // Run workload 'func()' until timing stabilizes.
 //
-// Returns the mean time of one workload unit.
-//
 // NOTE: stddev == 2*sigma
-//
-// Runs two nested loops:
-// - run_size
-//   - Calculates mean and standard error; adds resiliency against
-//     transient noise.
-//   - Dynamically sized according to:
-//       https://en.wikipedia.org/wiki/Sample_size_determination#Means
-//         run_size = (2 * confidence_sigma * sigma)^2 / width^2
-//         width = mean * stddev_perc
-//         sigma^2 = variance
-//       Increase capped to 'max_run_size_multiplier'.
-// - batch_size
-//   - Aggregates workload on batches; minimizes clock overheads.
-//   - Dynamically sized until:
-//       clock_time <= #batch_size * (mean - sigma) * clock_overhead
-//       Increase capped to 'max_batch_size_multiplier' (if not 'calibrating')
-//
-// Stops when:
-//   stddev <= mean * (stddev_perc / 100)  --> mean
-//   total runs >= max_experiments         --> mean with lowest sigma
 template<bool calibrating, trun::message msg, class C, class F, class... Args>
 static inline
 trun::result<C> trun::detail::core::run(trun::parameters<C> params, F&& func, Args&&... args)
 {
-    using C = typename P::clock_type;
-    using rep_type = typename result<C>::duration::rep;
-
-    double max_run_size_multiplier = 3;
+    // cap size increases (if not 'calibrating')
+    double max_batch_group_size_multiplier = 3;
     double max_batch_size_multiplier = 3;
-    parameters<C> p = params;
-    double clock_overhead = p.clock_overhead_perc / 100;
-    double stddev_ratio = p.stddev_perc / 100;
 
-    std::vector<rep_type> samples(p.run_size);
-    std::vector<bool> outliers(p.run_size);
-    result<C> res_best;
-    res_best.mean = duration_raw<C>(0);
-    res_best.sigma = duration_raw<C>(std::numeric_limits<rep_type>::max());
-    res_best.converged = false;
+    // convert to ratios
+    params.clock_overhead_perc /= 100;
+    params.stddev_perc /= 100;
 
-    size_t iterations = 0;
-    // first iteration is never enough
-    double target_batch_size = std::numeric_limits<double>::max();
-
-    // check if population is statistically significant
-    auto significant = [&](const result<C>& current) {
-        return current.run_size >= params.run_size_min_significance;
-    };
-
-    auto topple_runs = [](result<C>& dest,
-                          const std::vector<double>& src_samples,
-                          const std::vector<bool>& src_outliers) {
-        if (detail::core::has_get_runs<Args...>::value) {
-            dest.runs.resize(dest.run_size_all);
-            for (size_t i = 0; i < dest.run_size_all; i++) {
-                dest.runs[i] = std::make_tuple(duration_raw<C>(src_samples[i]), src_outliers[i]);
-            }
-        }
-    };
+    batch_group_stats<msg, C, Args...> stats_res, stats;
 
     trun::detail::message<trun::message::DEBUG, msg>(
-        "clock_overhead_perc=%f confidence_sigma=%f stddev_perc=%f "
-        "i_warmup=%lu r_warmup=%lu runs_size=%lu batch_size=%lu experiment_timeout=%f",
-        p.clock_overhead_perc, p.confidence_sigma, p.stddev_perc,
-        p.iteration_warmup_batch_size, p.run_warmup_batch_size,
-        p.run_size, p.batch_size, p.experiment_timeout);
+        "clock_overhead=%f confidence_sigma=%f confidence_outlier_sigma=%f stddev=%f "
+        "warmup_batch_group_size=%lu batch_group_size=%lu warmup_batch_size=%lu batch_size=%lu experiment_timeout=%f",
+        params.clock_overhead_perc, params.confidence_sigma, params.confidence_outlier_sigma, params.stddev_perc,
+        params.warmup_batch_group_size, params.batch_group_size, params.warmup_batch_size, params.batch_size,
+        params.experiment_timeout);
 
-    std::chrono::steady_clock::rep experiment_timeout_delta =
-        (p.experiment_timeout * std::chrono::steady_clock::period::den)
-        / std::chrono::steady_clock::period::num;
     auto timeout_start = std::chrono::steady_clock::now();
 
+    size_t target_batch_group_size = params.batch_group_size;
+    size_t target_batch_size = params.batch_size;
+    unsigned int iterations = 0;
+    bool converged = false;
     while (true) {
-        // try to calculate how much more it will take
-        auto timeout_now = std::chrono::steady_clock::now();
-        auto timeout_cur_delta = timeout_now - timeout_start;
-        auto experiment_delta = detail::core::to_time(res_best.mean) *
-            ((p.run_size * (p.run_warmup_batch_size + p.batch_size)) + p.iteration_warmup_batch_size);
-        if ((timeout_cur_delta + experiment_delta).count() >= experiment_timeout_delta) {
-            trun::detail::message<trun::message::INFO, msg>(
-                "experiment timed out after %lu(+%lu) sec",
-                std::chrono::duration_cast<std::chrono::seconds>(timeout_cur_delta).count(),
-                std::chrono::duration_cast<std::chrono::seconds>(experiment_delta).count());
-            break;
-        }
-
         // run experiment batches
-        if (samples.size() < p.run_size) {
-            samples.resize(p.run_size);
-            if (detail::core::has_get_runs<Args...>::value) {
-                outliers.resize(p.run_size);
-            }
-        } else if (samples.size() > p.run_size * 2) {
-            samples.resize(p.run_size * 2);
-            if (detail::core::has_get_runs<Args...>::value) {
-                outliers.resize(p.run_size * 2);
-            }
+        stats.resize(params.batch_group_size,
+                     detail::core::has_get_runs<Args...>::value);
+        // - pre-batch group warmup
+        (void)detail::core::func_call<C, F, Args...>(
+            std::forward<F>(func), 0, params.warmup_batch_group_size, 0);
+        // - batch group
+        for (size_t i = 0; i < params.batch_group_size; i++) {
+            auto delta = detail::core::func_call<C, F, Args...>(
+                std::forward<F>(func), i, params.warmup_batch_size, params.batch_size);
+            stats.add(delta.count());
         }
-        loops<C>(samples, iterations, p.iteration_warmup_batch_size, p.run_warmup_batch_size,
-                 p.run_size, p.batch_size,
-                 std::forward<F>(func), std::forward<Args>(args)...);
-        iterations++;
 
         // calculate statistics
-        result<C> res_curr = stats<msg>(
-            p, iterations-1, samples, outliers,
-            std::forward<Args>(args)...);
-        auto width = res_curr.mean.count() * stddev_ratio;
-        auto width_all = res_curr.mean_all.count() * stddev_ratio;
+        stats.calculate(params);
+        auto width = stats.mean * params.stddev_perc;
 
+        auto timeout_now = std::chrono::steady_clock::now();
+        auto timeout_cur_delta = timeout_now - timeout_start;
         if (msg >= trun::message::DEBUG) {
-            timeout_now = std::chrono::steady_clock::now();
-            timeout_cur_delta = timeout_now - timeout_start;
+            auto t_left = params.experiment_timeout - (unsigned long)std::chrono::duration_cast<std::chrono::seconds>(
+                timeout_cur_delta).count();
             trun::detail::message<trun::message::DEBUG, msg>(
-                "mean=%f sigma=%f width=%f run_size=%lu run_size_all=%lu batch_size=%lu"
-                " experiment_delta=%lu",
-                res_curr.mean.count(), res_curr.sigma.count(), width,
-                res_curr.run_size, res_curr.run_size_all, res_curr.batch_size,
-                std::chrono::duration_cast<std::chrono::seconds>(timeout_cur_delta).count());
+                "mean=%f sigma=%f width=%f"
+                " batch_group_size=%lu batch_group_size_all=%lu batch_size=%lu"
+                " experiment_timeout_left=%ld",
+                stats.mean, stats.sigma, width,
+                stats.count, stats.count_all, params.batch_size, (long)t_left);
         }
 
         // update 'clock_time' if we're in calibration mode
-        update_clock_time<calibrating>(p, res_curr.mean);
+        update_clock_time<calibrating>(params, stats.mean);
+
+        // done in one try (forced)
+        if (params.stddev_perc == 0) {
+            stats_res = stats;
+            break;
+        }
 
         // check if we're done
         {
-            bool match = res_curr.sigma.count() <= width;
-            // keep running if we were capped by batch size growth
-            bool can_match = p.batch_size >= target_batch_size;
-            res_curr.converged = match && can_match;
-            if (match && significant(res_curr)) {
-                res_best = res_curr;
-                topple_runs(res_best, samples, outliers);
-                if (can_match) {
-                    break;
-                }
+            bool match = stats.sigma <= width;
+            bool can_match = true;
+            // keep running if we were capped by target size growth
+            can_match &= params.batch_group_size == target_batch_group_size;
+            can_match &= params.batch_size == target_batch_size;
+            // do at least two iterations
+            can_match &= iterations > 1;
+            converged = match && can_match;
+            if (converged) {
+                stats_res = stats;
+                break;
             } else {
-                // keep track of best result in case we hit the run limit
-                if (res_curr.sigma < res_best.sigma &&
-                    (significant(res_curr) ||
-                     // select at least one
-                     iterations <= 1)) {
-                    res_best = res_curr;
-                    topple_runs(res_best, samples, outliers);
+                // keep track of result with lowest sigma in case we timeout
+                if (iterations == 0 || stats.sigma < stats_res.sigma) {
+                    stats_res = stats;
                 }
             }
         }
 
-        // discard populations without statistical significance
-        if (!significant(res_curr)) {
-            continue;
+        // check for timeout
+        auto timeout_cur_delta_seconds = std::chrono::duration_cast<std::chrono::seconds>(
+            timeout_cur_delta).count();
+        if (timeout_cur_delta_seconds >= params.experiment_timeout) {
+            trun::detail::message<trun::message::INFO, msg>(
+                "experiment timed out after %lu sec", timeout_cur_delta_seconds);
+            stats_res = stats;
+            break;
         }
 
-        // keep timing overhead under control
-        {
+        // auto-adapt @batch_group_size
+        if (params.confidence_sigma) {
+            auto max_size = params.batch_group_size * max_batch_group_size_multiplier;
+            auto top_size = params.batch_group_size * max_batch_group_size_multiplier * 10;
+            auto min_size = params.batch_group_size / max_batch_group_size_multiplier / 10;
+            auto new_size = pow((2 * params.confidence_sigma * stats.sigma_all) / width, 2);
+            // compensate batch group size for outliers
+            new_size += stats.count_all - stats.count;
+            target_batch_group_size = std::ceil(new_size);
+            if (new_size > max_size && iterations == 0) {
+                params.batch_group_size = std::ceil(max_size);
+            } else if (new_size < min_size && iterations > 1) {
+                params.batch_group_size = std::ceil(min_size);
+            } else if (new_size > top_size){
+                params.batch_group_size = std::ceil(top_size);
+            } else {
+                params.batch_group_size = std::ceil(new_size);
+            }
+            if (params.batch_group_size < params.batch_group_min_size) {
+                target_batch_group_size = params.batch_group_size = params.batch_group_min_size;
+            }
+        }
+
+        // auto-adapt @batch_size
+        if (params.clock_overhead_perc){
             // conservative mean for calculating batch
-            auto mean_all = res_curr.mean_all.count() - res_curr.sigma_all.count();
+            auto mean_all = stats.mean_all - stats.sigma_all;
             if (mean_all < 0) {
-                mean_all = res_curr.mean_all.count();
+                mean_all = stats.mean_all;
             }
-            auto max_batch_size = p.batch_size * max_batch_size_multiplier;
-            auto min_batch_size = p.batch_size / max_batch_size_multiplier;
-            target_batch_size = p.clock_time.count() / (mean_all * clock_overhead);
-            if (target_batch_size > max_batch_size && iterations == 1) {
-                p.batch_size = std::ceil(max_batch_size);
-            } else if (target_batch_size < min_batch_size && iterations > 1) {
-                p.batch_size = std::ceil(min_batch_size);
-            } else if (target_batch_size > p.batch_size){
-                p.batch_size = std::ceil(target_batch_size);
+            auto max_size = params.batch_size * max_batch_size_multiplier;
+            auto top_size = params.batch_size * max_batch_size_multiplier * 10;
+            auto min_size = params.batch_size / max_batch_size_multiplier;
+            auto new_size = params.clock_time.count() / (mean_all * params.clock_overhead_perc);
+            target_batch_size = std::ceil(new_size);
+            if (new_size > max_size && iterations == 0) {
+                params.batch_size = std::ceil(max_size);
+            } else if (new_size < min_size && iterations > 1) {
+                params.batch_size = std::ceil(min_size);
+            } else if (new_size > top_size){
+                params.batch_size = std::ceil(top_size);
+            } else {
+                params.batch_size = std::ceil(new_size);
             }
         }
 
-        // calculate new population size
-        {
-            auto max_run_size = p.run_size * max_run_size_multiplier;
-            auto top_run_size = p.run_size * max_run_size_multiplier * 10;
-            auto min_run_size = p.run_size / max_run_size_multiplier;
-            auto new_run_size = pow((2 * p.confidence_sigma * res_curr.sigma_all.count()) / width_all, 2);
-            if (new_run_size > max_run_size && iterations == 1) {
-                p.run_size = std::ceil(max_run_size);
-            } else if (new_run_size < min_run_size && iterations > 1) {
-                p.run_size = std::ceil(min_run_size);
-            } else if (new_run_size > top_run_size){
-                p.run_size = std::ceil(top_run_size);
-            } else if (new_run_size > p.run_size){
-                p.run_size = std::ceil(new_run_size);
-            }
-            if (p.run_size < params.run_size) {
-                p.run_size = params.run_size;
-            }
+        iterations++;
+    }
+
+    trun::result<C> res;
+    res.min = duration_raw<C>(stats_res.min);
+    res.min_all = duration_raw<C>(stats_res.min_all);
+    res.max = duration_raw<C>(stats_res.max);
+    res.max_all = duration_raw<C>(stats_res.max_all);
+    res.mean = duration_raw<C>(stats_res.mean);
+    res.mean_all = duration_raw<C>(stats_res.mean_all);
+    res.sigma = duration_raw<C>(stats_res.sigma);
+    res.sigma_all = duration_raw<C>(stats_res.sigma_all);
+    res.batches = stats_res.count;
+    res.batches_all = stats_res.count_all;
+    res.converged = converged;
+    if (detail::core::has_get_runs<Args...>::value) {
+        res.runs.resize(stats.count_all);
+        for (size_t i = 0; i < stats.count_all; i++) {
+            res.runs[i].time = duration_raw<C>(stats.samples[i]);
+            res.runs[i].outlier = stats.outliers[i];
         }
     }
 
-    res = res_best;
+    return res;
 }
 
 #endif // TRUN__DETAIL__CORE_IMPL_HPP

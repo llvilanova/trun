@@ -42,8 +42,9 @@ namespace trun {
 
     // Experiment run results.
     //
-    // Timing numbers are for a single experiment, and do not contain
-    // outliers. The '_all' fields are the only ones that contain outliers.
+    // Timing numbers are for a single experiment instance, and do not contain
+    // outliers. The '_all' fields are the only ones that contain outliers. The
+    // @batch_size field is for the last batch only.
     template<class Clock>
     class result
     {
@@ -54,14 +55,17 @@ namespace trun {
         duration max, max_all;
         duration mean, mean_all;
         duration sigma, sigma_all;
-        size_t run_size, run_size_all;
-        size_t batch_size;
+        size_t batches, batches_all;
         bool converged;
 
-        // Mean experiment duration of each run (boolean identifies outliers)
-        //
+        struct batch
+        {
+            duration time;
+            bool outlier;
+        };
+
         // Has contents only when #mod_get_runs is used in trun().
-        std::vector< std::tuple<duration, bool> > runs;
+        std::vector<batch> runs;
 
         // Scale this results down (divide) by the given factor.
         //
@@ -74,71 +78,90 @@ namespace trun {
         result<ClockTarget> convert() const;
     };
 
-#define TRUN_CLOCK_OVERHEAD_PERC 0.1    // 0.1% timing overhead
+#define TRUN_STDDEV_PERC 1              // 1% of the mean
 #define TRUN_CONFIDENCE_SIGMA 2         // 2 * sigma -> 95.45%
 #define TRUN_CONFIDENCE_OUTLIER_SIGMA 4 // 4 * sigma -> 99.99%
-#define TRUN_STDDEV_PERC 1              // 1% of the mean
-#define TRUN_ITERATION_WARMUP_BATCH_SIZE 0
-#define TRUN_RUN_WARMUP_BATCH_SIZE 0
-#define TRUN_RUN_SIZE 30                // minimal statistical significance
-#define TRUN_BATCH_SIZE 1
-#define TRUN_EXPERIMENT_TIMEOUT 300
+#define TRUN_EXPERIMENT_TIMEOUT 300     // timeout after 5min
+
+#define TRUN_WARMUP_BATCH_GROUP_SIZE 0
+#define TRUN_INITIAL_BATCH_GROUP_SIZE 1
+#define TRUN_BATCH_GROUP_MIN_SIZE 30 // rule of thumb for statistical significance
+
+#define TRUN_CLOCK_OVERHEAD_PERC 0.1    // 0.1% timing overhead
+#define TRUN_WARMUP_BATCH_SIZE 0
+#define TRUN_INITIAL_BATCH_SIZE 1
 
     // Run parameters.
+    //
+    // @stddev_perc: target standard deviation
+    //     (default: TRUN_STDDEV_PERC)
+    //     The value is set in terms of a percentage of the measured mean. If
+    //     set to zero, runs the set of experiments only once.
+    // @confidence_sigma: target confidence interval
+    //     (default: TRUN_CONFIDENCE_SIGMA)
+    //     The value is set in terms of sigma (stddev / 2). See 68-95-99.7 rule
+    //     (https://en.wikipedia.org/wiki/68-95-99.7_rule#Table_of_numerical_values).
+    //     Used to select the number of experiment batches (batch group) to compute
+    //     statistics across
+    //     (https://en.wikipedia.org/wiki/Sample_size_determination#Estimation_of_a_mean):
+    //       batch group = (2 * confidence_sigma * sigma)^2 / width^2
+    //       width = mean * stddev_perc
+    //       sigma^2 = variance
+    //     If set to zero, uses the fixed value of @batch_group_size.
+    // @confidence_outlier_sigma: target confidence interval to discard outliers
+    //     (default: TRUN_CONFIDENCE_OUTLIER_SIGMA)
+    //     The value is set in terms of sigma (stddev / 2).  Ignores experiments
+    //     where:
+    //       confidence_outlier_sigma * sigma_all > |time - mean_all|
+    // @experiment_timeout: maximum running time (seconds) until non-convergence
+    //     (default: TRUN_EXPERIMENT_TIMEOUT)
+    //
+    // @warmup_batch_group_size: number of warmup experiments before every batch group
+    //     (default: TRUN_WARMUP_BATCH_GROUP_SIZE)
+    // @batch_group_size: number of batches to calculate statistics on
+    //     (default: TRUN_INITIAL_BATCH_GROUP_SIZE)
+    //     Each batch group is executed entirely before recalculating
+    //     statistics. The value is dynamically-adapted, unless
+    //     @confidence_sigma is set to zero.
+    // @batch_group_min_size: minimum number of batches to calculate statistics on
+    //     (default: TRUN_BATCH_GROUP_MIN_SIZE)
+    //     This bounds the lower limit calculated through @confidence_sigma.
     //
     // @Clock: the clock type (any provided by std::chrono).
     // @clock_time: the time it takes to take a measurement with #Clock.
     //     (default: auto-calibrated)
     // @clock_overhead_perc: target clock overhead percentage
     //     (default: TRUN_CLOCK_OVERHEAD_PERC)
-    //     Respective to the time of a single measurement.
-    // @confidence_sigma: target confidence interval
-    //     (default: TRUN_CONFIDENCE_SIGMA)
-    //     The value is set in terms of sigma (stddev / 2). See 68-95-99.7 rule
-    //     (https://en.wikipedia.org/wiki/68-95-99.7_rule#Table_of_numerical_values).
-    // @confidence_outlier_sigma: target confidence interval to discard outliers
-    //     (default: TRUN_CONFIDENCE_OUTLIER_SIGMA)
-    //     The value is set in terms of sigma (stddev / 2).
-    // @stddev_perc: target standard deviation
-    //     (default: TRUN_STDDEV_PERC)
-    //     The value is set in terms of a percentage of the mean.
-    // @iteration_warmup_batch_size: number of warmup experiments before every iteration
-    //     (default: TRUN_ITERATION_WARMUP_BATCH_SIZE)
-    // @run_warmup_batch_size: number of warmup experiments on each run
-    //     (default: TRUN_RUN_WARMUP_BATCH_SIZE)
-    // @run_size: minimum number of runs
-    //     (default: TRUN_RUN_SIZE)
-    //     Statistics are calculated across runs. At least this number of
-    //     experiment runs will be executed.
-    // @run_size_min_significance: minimum number of runs for statistical significance
-    //     (default: TRUN_RUN_SIZE)
-    //     Experiments with less than this number of non-outlier results will be
-    //     discarded.
-    // @batch_size: initial number of experiments to batch together; dynamically adapted
-    //     (default: TRUN_BATCH_SIZE)
-    //     Every batch is timed separately to reduce clock overheads.
-    // @experiment_timeout: maximum running time (seconds) until experiment non-convergence
-    //     (default: TRUN_EXPERIMENT_TIMEOUT)
+    //     Respective to the time of a single measurement. Used to select the
+    //     size of experiment batches:
+    //       batch_size >= clock_time / ((mean - sigma) * clock_overhead_perc / 100)
+    //     If set to zero, uses the fixed value of @batch_size.
+    // @warmup_batch_size: number of warmup experiments before every timed batch
+    //     (default: TRUN_WARMUP_BATCH_SIZE)
+    // @batch_size: number of experiment instances on each batch
+    //     (default: TRUN_INITIAL_BATCH_SIZE)
+    //     Each batch is timed separately to reduce clock overheads. The value
+    //     is dynamically adapted, unless @clock_overhead_perc is set to zero.
     template<class Clock>
     class parameters
     {
     public:
         parameters();
 
+        double stddev_perc;
+        double confidence_sigma;
+        double confidence_outlier_sigma;
+        double experiment_timeout;
+
+        size_t warmup_batch_group_size;
+        size_t batch_group_size;
+        size_t batch_group_min_size;
+
         using clock_type = Clock;
         typename result<clock_type>::duration clock_time;
         double clock_overhead_perc;
-
-        double confidence_sigma;
-        double confidence_outlier_sigma;
-        double stddev_perc;
-
-        size_t iteration_warmup_batch_size;
-        size_t run_warmup_batch_size;
-        size_t run_size;
-        size_t run_size_min_significance;
+        size_t warmup_batch_size;
         size_t batch_size;
-        double experiment_timeout;
 
         // Return new parameters with units converted according to #ClockTarget.
         template<class ClockTarget>
@@ -238,14 +261,15 @@ namespace trun {
     // etc. where externally timing a call to the function includes code we do
     // not want to include in the timing result.
     //
-    // A regular run() to time func() is equivalent to passing func_run():
+    // A regular trun::run() to time func() is equivalent to passing the
+    // following func_run():
     //
     //   template<class Clock>
-    //   result<Clock>::duration func_run(size_t iter, size_t run,
-    //                                    size_t run_warmup_batch_size,
+    //   result<Clock>::duration func_run(size_t batch_group
+    //                                    size_t warmup_batch_size,
     //                                    size_t batch_size)
     //   {
-    //       for (size_t i = 0; i < run_warmup_batch_size; i++) {
+    //       for (size_t i = 0; i < warmup_batch_size; i++) {
     //           func();
     //           asm volatile("" : : : "memory");
     //       }
@@ -283,18 +307,14 @@ namespace trun {
     // This assumes that experiments follow a gaussian distribution, and ignores
     // those beyond #parameters.confidence_outlier_sigma * sigma of the mean:
     //
-    // If #parameters.clock_time is zero, #time::calibrate with default
-    // parameters will be used.
+    // If #parameters.clock_time is zero, it will use #trun::time::calibrate
+    // with default parameters.
     //
-    // It accounts for time measurement overheads by ensuring that:
+    // If results do not converge in the given time
+    // (#parameters.experiment_timeout), returns the results with the lowest
+    // standard deviation found so far.
     //
-    //     clock_time <= mean * (clock_overhead_perc / 100)
-    //
-    // If results do not converge (#parameters.max_experiments is reached),
-    // return the mean with lowest standard deviation found so far.
-    //
-    //
-    // You can pass the objects in trun::mod_* to modify the bahavior of
+    // You can pass the objects in trun::mod_* to modify the behavior of
     // trun::run(). See above for their meaning.
     template<trun::message msg = trun::message::NONE, class Clock,
              class Func, class... Args>

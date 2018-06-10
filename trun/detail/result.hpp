@@ -1,6 +1,6 @@
 /** trun/detail/result.hpp ---
  *
- * Copyright (C) 2015 Lluís Vilanova
+ * Copyright (C) 2015-2018 Lluís Vilanova
  *
  * Author: Lluís Vilanova <vilanova@ac.upc.edu>
  *
@@ -65,8 +65,10 @@ trun::result<Clock>::convert() const
         res.sigma_all = trun::time::tsc_cycles::time(this->sigma_all);
         for (size_t i=0; i<res.runs.size(); i++) {
             auto elem = this->runs[i];
-            res.runs[i] = std::make_pair(trun::time::tsc_cycles::time(std::get<0>(elem)),
-                                         std::get<1>(elem));
+            res.runs[i] = {
+                trun::time::tsc_cycles::time(elem.time),
+                elem.outlier,
+            };
         }
     } else if (!std::is_same<Clock, trun::time::tsc_cycles>::value &&
                std::is_same<ClockTarget, trun::time::tsc_cycles>::value) {
@@ -81,12 +83,15 @@ trun::result<Clock>::convert() const
         res.sigma = this->sigma;
         res.sigma_all = this->sigma_all;
         for (size_t i=0; i<res.runs.size(); i++) {
-            res.runs[i] = this->runs[i];
+            auto elem = this->runs[i];
+            res.runs[i] = {
+                trun::time::tsc_cycles::time(elem.time),
+                elem.outlier,
+            };
         }
     }
-    res.run_size = this->run_size;
-    res.run_size_all = this->run_size_all;
-    res.batch_size = this->batch_size;
+    res.batches = this->batches;
+    res.batches_all = this->batches_all;
     res.converged = this->converged;
     return res;
 }

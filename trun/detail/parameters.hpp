@@ -41,18 +41,20 @@ namespace trun {
                     }                                                   \
                 } while (0)
 
+                _TRUN_PARAM_CHECK(stddev_perc, false);
+                _TRUN_PARAM_CHECK(confidence_sigma, false);
+                _TRUN_PARAM_CHECK(confidence_outlier_sigma, true);
+                _TRUN_PARAM_CHECK(experiment_timeout, true);
+
+                _TRUN_PARAM_CHECK(warmup_batch_group_size, false);
+                _TRUN_PARAM_CHECK(batch_group_size, true);
+                _TRUN_PARAM_CHECK(batch_group_min_size, true);
+
                 _TRUN_PARAM_CHECK(clock_time.count(), false);
                 _TRUN_PARAM_CHECK(clock_overhead_perc, false);
-                _TRUN_PARAM_CHECK(confidence_sigma, true);
-                _TRUN_PARAM_CHECK(confidence_outlier_sigma, true);
-                _TRUN_PARAM_CHECK(stddev_perc, true);
-                _TRUN_PARAM_CHECK(run_size, true);
+                _TRUN_PARAM_CHECK(warmup_batch_size, false);
                 _TRUN_PARAM_CHECK(batch_size, true);
 #undef _TRUN_PARAM_CHECK
-
-                if (params.run_size < TRUN_RUN_SIZE) {
-                    warnx("[trun] run_size is not statistically significant (< %d)", TRUN_RUN_SIZE);
-                }
             }
 
         }
@@ -62,17 +64,17 @@ namespace trun {
 template<class C>
 inline
 trun::parameters<C>::parameters()
-    :clock_time(0)
-    ,clock_overhead_perc(TRUN_CLOCK_OVERHEAD_PERC)
+    :stddev_perc(TRUN_STDDEV_PERC)
     ,confidence_sigma(TRUN_CONFIDENCE_SIGMA)
     ,confidence_outlier_sigma(TRUN_CONFIDENCE_OUTLIER_SIGMA)
-    ,stddev_perc(TRUN_STDDEV_PERC)
-    ,iteration_warmup_batch_size(TRUN_ITERATION_WARMUP_BATCH_SIZE)
-    ,run_warmup_batch_size(TRUN_RUN_WARMUP_BATCH_SIZE)
-    ,run_size(TRUN_RUN_SIZE)
-    ,run_size_min_significance(TRUN_RUN_SIZE)
-    ,batch_size(TRUN_BATCH_SIZE)
     ,experiment_timeout(TRUN_EXPERIMENT_TIMEOUT)
+    ,warmup_batch_group_size(TRUN_WARMUP_BATCH_GROUP_SIZE)
+    ,batch_group_size(TRUN_INITIAL_BATCH_GROUP_SIZE)
+    ,batch_group_min_size(TRUN_BATCH_GROUP_MIN_SIZE)
+    ,clock_time(0)
+    ,clock_overhead_perc(TRUN_CLOCK_OVERHEAD_PERC)
+    ,warmup_batch_size(TRUN_WARMUP_BATCH_SIZE)
+    ,batch_size(TRUN_INITIAL_BATCH_SIZE)
 {
 }
 
@@ -99,15 +101,16 @@ trun::parameters<Clock>::convert() const
         res.clock_time = this->clock_time;
     }
 
-    res.clock_overhead_perc = this->clock_overhead_perc;
+    res.stddev_perc = this->stddev_perc;
     res.confidence_sigma = this->confidence_sigma;
     res.confidence_outlier_sigma = this->confidence_outlier_sigma;
-    res.stddev_perc = this->stddev_perc;
-    res.iteration_warmup_batch_size = this->iteration_warmup_batch_size;
-    res.run_warmup_batch_size = this->run_warmup_batch_size;
-    res.run_size = this->run_size;
-    res.batch_size = this->batch_size;
     res.experiment_timeout = this->experiment_timeout;
+    res.warmup_batch_group_size = this->warmup_batch_group_size;
+    res.batch_group_size = this->batch_group_size;
+    res.batch_group_min_size = this->batch_group_min_size;
+    res.clock_overhead_perc = this->clock_overhead_perc;
+    res.warmup_batch_size = this->warmup_batch_size;
+    res.batch_size = this->batch_size;
     return res;
 }
 
