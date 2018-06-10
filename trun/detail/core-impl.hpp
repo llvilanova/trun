@@ -307,18 +307,15 @@ trun::result<C> trun::detail::core::run(trun::parameters<C> params, F&& func, Ar
         // auto-adapt @batch_group_size
         if (params.confidence_sigma) {
             auto max_size = params.batch_group_size * max_batch_group_size_multiplier;
-            auto top_size = params.batch_group_size * max_batch_group_size_multiplier * 10;
-            auto min_size = params.batch_group_size / max_batch_group_size_multiplier / 10;
+            auto min_size = params.batch_group_size / max_batch_group_size_multiplier / 2;
             auto new_size = pow((2 * params.confidence_sigma * stats.sigma_all) / width, 2);
             // compensate batch group size for outliers
             new_size += stats.count_all - stats.count;
             target_batch_group_size = std::ceil(new_size);
-            if (new_size > max_size && iterations == 0) {
+            if (new_size > max_size) {
                 params.batch_group_size = std::ceil(max_size);
-            } else if (new_size < min_size && iterations > 1) {
+            } else if (new_size < min_size) {
                 params.batch_group_size = std::ceil(min_size);
-            } else if (new_size > top_size){
-                params.batch_group_size = std::ceil(top_size);
             } else {
                 params.batch_group_size = std::ceil(new_size);
             }
@@ -335,16 +332,13 @@ trun::result<C> trun::detail::core::run(trun::parameters<C> params, F&& func, Ar
                 mean_all = stats.mean_all;
             }
             auto max_size = params.batch_size * max_batch_size_multiplier;
-            auto top_size = params.batch_size * max_batch_size_multiplier * 10;
-            auto min_size = params.batch_size / max_batch_size_multiplier;
+            auto min_size = params.batch_size / max_batch_size_multiplier / 2;
             auto new_size = params.clock_time.count() / (mean_all * params.clock_overhead_perc);
             target_batch_size = std::ceil(new_size);
-            if (new_size > max_size && iterations == 0) {
+            if (new_size > max_size) {
                 params.batch_size = std::ceil(max_size);
-            } else if (new_size < min_size && iterations > 1) {
+            } else if (new_size < min_size) {
                 params.batch_size = std::ceil(min_size);
-            } else if (new_size > top_size){
-                params.batch_size = std::ceil(top_size);
             } else {
                 params.batch_size = std::ceil(new_size);
             }
