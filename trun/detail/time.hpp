@@ -71,7 +71,7 @@ namespace trun {
 
             res_params.clock_time = res.mean;
 
-            return std::move(res_params);
+            return res_params;
         }
 
         template<class C, trun::message msg, class F>
@@ -91,7 +91,7 @@ namespace trun {
 
             res_params.clock_time = res.mean;
 
-            return std::move(res_params);
+            return res_params;
         }
 
         template<class C, trun::message msg>
@@ -103,7 +103,7 @@ namespace trun {
 
             parameters<C> res_params;
             res_params.clock_time = clock_params.clock_time;
-            return std::move(res_params);
+            return res_params;
         }
 
         template<class C, trun::message msg, class F>
@@ -117,7 +117,7 @@ namespace trun {
 
             parameters<C> res_params;
             res_params.clock_time = clock_params.clock_time;
-            return std::move(res_params);
+            return res_params;
         }
 
         template<class Ratio, class Clock>
