@@ -166,6 +166,9 @@ namespace trun {
         // Return new parameters with units converted according to #ClockTarget.
         template<class ClockTarget>
         parameters<ClockTarget> convert() const;
+
+        // Return new parameters tweaked for clock calibration.
+        static parameters<Clock> get_clock_params();
     };
 
 

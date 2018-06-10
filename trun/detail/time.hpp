@@ -35,17 +35,6 @@ namespace trun {
             {
             }
 
-            template<class C>
-            parameters<C> get_clock_params()
-            {
-                parameters<C> params;
-                params.confidence_sigma = 3; // 99.73%
-                params.iteration_warmup_batch_size = 1000;
-                params.batch_size = 10000;
-                params.experiment_timeout = 60;
-                return std::move(params);
-            }
-
         }
 
         template<class C, trun::message msg>
@@ -98,7 +87,7 @@ namespace trun {
         static inline
         parameters<C> calibrate()
         {
-            parameters<C> clock_params = detail::get_clock_params<C>();
+            parameters<C> clock_params = trun::parameters<C>::get_clock_params();
             clock_params = calibrate<C, msg>(clock_params);
 
             parameters<C> res_params;
@@ -110,9 +99,7 @@ namespace trun {
         static inline
         parameters<C> calibrate(F&& func, trun::mod_clock_type &mod_clock)
         {
-            parameters<C> clock_params = detail::get_clock_params<C>();
-            clock_params.run_warmup_batch_size = clock_params.iteration_warmup_batch_size;
-            clock_params.iteration_warmup_batch_size = 0;
+            parameters<C> clock_params = trun::parameters<C>::get_clock_params();
             clock_params = calibrate<C, msg>(clock_params, std::forward<F>(func), mod_clock);
 
             parameters<C> res_params;
