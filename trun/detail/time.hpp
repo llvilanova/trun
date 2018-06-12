@@ -41,11 +41,7 @@ namespace trun {
         static inline
         parameters<C> calibrate(const parameters<C> & params)
         {
-            // initialize parameters
-            parameters<C> res_params = params;
-            res_params.clock_time = typename C::duration(typename C::rep(0));
-            trun::detail::parameters::check(res_params);
-
+            trun::detail::parameters::check(params);
             trun::detail::message<trun::message::INFO, msg>("Calibrating clock overheads...");
             auto time = []() {
                 auto t1 = C::now();
@@ -58,6 +54,7 @@ namespace trun {
                 errx(1, "[trun] clock calibration did not converge");
             }
 
+            parameters<C> res_params;
             res_params.clock_time = res.mean;
 
             return res_params;
@@ -68,9 +65,7 @@ namespace trun {
         parameters<C> calibrate(const parameters<C> & params, F&& func, trun::mod_clock_type &mod_clock)
         {
             // initialize parameters
-            parameters<C> res_params = params;
-            res_params.clock_time = typename C::duration(typename C::rep(0));
-            trun::detail::parameters::check(res_params);
+            trun::detail::parameters::check(params);
 
             trun::detail::message<trun::message::INFO, msg>("Calibrating clock overheads...");
             auto res = trun::detail::core::run<true, msg, C>(params, func, mod_clock);
@@ -78,6 +73,7 @@ namespace trun {
                 errx(1, "[trun] clock calibration did not converge");
             }
 
+            parameters<C> res_params;
             res_params.clock_time = res.mean;
 
             return res_params;
@@ -88,10 +84,7 @@ namespace trun {
         parameters<C> calibrate()
         {
             parameters<C> clock_params = trun::parameters<C>::get_clock_params();
-            clock_params = calibrate<C, msg>(clock_params);
-
-            parameters<C> res_params;
-            res_params.clock_time = clock_params.clock_time;
+            parameters<C> res_params = calibrate<C, msg>(clock_params);
             return res_params;
         }
 
@@ -100,9 +93,7 @@ namespace trun {
         parameters<C> calibrate(F&& func, trun::mod_clock_type &mod_clock)
         {
             parameters<C> clock_params = trun::parameters<C>::get_clock_params();
-            clock_params = calibrate<C, msg>(clock_params, std::forward<F>(func), mod_clock);
-
-            parameters<C> res_params;
+            parameters<C> res_params = calibrate<C, msg>(clock_params, std::forward<F>(func), mod_clock);
             res_params.clock_time = clock_params.clock_time;
             return res_params;
         }
