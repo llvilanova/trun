@@ -94,7 +94,6 @@ namespace trun {
         {
             parameters<C> clock_params = trun::parameters<C>::get_clock_params();
             parameters<C> res_params = calibrate<C, msg>(clock_params, std::forward<F>(func), mod_clock);
-            res_params.clock_time = clock_params.clock_time;
             return res_params;
         }
 
